@@ -1,5 +1,6 @@
 import type { Job, JobSourceStatus } from "./types";
 import { fetchAshbyJobs } from "./sources/ashby";
+import { fetchComeetJobs } from "./sources/comeet";
 import { fetchGreenhouseJobs } from "./sources/greenhouse";
 import { fetchLeverJobs } from "./sources/lever";
 import { deduplicateJobs } from "./sources/shared";
@@ -17,15 +18,16 @@ export async function getJobsSnapshot(forceRefresh = false): Promise<JobsSnapsho
     return memoryCache.snapshot;
   }
 
-  const [greenhouse, lever, ashby] = await Promise.all([
+  const [greenhouse, lever, ashby, comeet] = await Promise.all([
     fetchGreenhouseJobs(),
     fetchLeverJobs(),
     fetchAshbyJobs(),
+    fetchComeetJobs(),
   ]);
 
   const snapshot = {
-    jobs: deduplicateJobs([...greenhouse.jobs, ...lever.jobs, ...ashby.jobs]),
-    sources: [...greenhouse.sources, ...lever.sources, ...ashby.sources],
+    jobs: deduplicateJobs([...greenhouse.jobs, ...lever.jobs, ...ashby.jobs, ...comeet.jobs]),
+    sources: [...greenhouse.sources, ...lever.sources, ...ashby.sources, ...comeet.sources],
     refreshedAt: new Date().toISOString(),
   };
 

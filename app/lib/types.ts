@@ -27,7 +27,7 @@ export type WorkplaceType = "remote" | "hybrid" | "on-site" | "unspecified";
 
 export type Job = {
   id: string;
-  source: "greenhouse" | "lever" | "ashby";
+  source: "greenhouse" | "lever" | "ashby" | "comeet";
   sourceLabel: string;
   company: string;
   title: string;
