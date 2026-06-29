@@ -1,3 +1,22 @@
+export type CvJobHistory = {
+  title: string;
+  company: string;
+  duration: string;
+  highlights: string[];
+};
+
+export type CvProfile = {
+  candidateName: string;
+  lastTwoJobs: CvJobHistory[];
+  idealNextRole: string;
+  targetRoles: string[];
+  seniority: string;
+  skills: string[];
+  searchKeywords: string[];
+  summary: string;
+  careerTrajectory: string;
+};
+
 export type CvAnalysis = {
   candidateName: string;
   targetRoles: string[];
@@ -6,6 +25,8 @@ export type CvAnalysis = {
   tools: string[];
   languages: string[];
   summary: string;
+  lastTwoJobs?: CvJobHistory[];
+  idealNextRole?: string;
 };
 
 export type JobMatch = {
@@ -21,6 +42,17 @@ export type JobMatch = {
 export type AnalyzeResponse = {
   cv: CvAnalysis;
   match: JobMatch;
+};
+
+export type JobRecommendation = {
+  job: Job;
+  matchScore: number;
+  reason: string;
+};
+
+export type RecommendResponse = {
+  profile: CvProfile;
+  recommendations: JobRecommendation[];
 };
 
 export type WorkplaceType = "remote" | "hybrid" | "on-site" | "unspecified";
