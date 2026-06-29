@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createClient, isSupabaseConfigured } from "../app/lib/supabase/client";
+import { useLanguage } from "./LanguageProvider";
 
 export default function AuthStatus() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -30,7 +32,7 @@ export default function AuthStatus() {
 
   async function signIn() {
     if (!email.trim()) {
-      setMessage("Enter your email first.");
+      setMessage(t("auth.enterEmail"));
       return;
     }
 
@@ -44,9 +46,9 @@ export default function AuthStatus() {
         options: { emailRedirectTo: redirectTo },
       });
       if (error) throw error;
-      setMessage("Check your email for the sign-in link.");
+      setMessage(t("auth.checkEmail"));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not send sign-in link.");
+      setMessage(error instanceof Error ? error.message : t("auth.sendFailed"));
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,7 @@ export default function AuthStatus() {
       setEmail("");
       setUserEmail(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not sign out.");
+      setMessage(error instanceof Error ? error.message : t("auth.signOutFailed"));
     } finally {
       setLoading(false);
     }
@@ -76,7 +78,7 @@ export default function AuthStatus() {
         <>
           <span className="auth-user">{userEmail}</span>
           <button type="button" onClick={() => void signOut()} disabled={loading}>
-            Sign out
+            {t("auth.signOut")}
           </button>
         </>
       ) : (
@@ -85,11 +87,11 @@ export default function AuthStatus() {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="Email to save matches"
-            aria-label="Email to save matches"
+            placeholder={t("auth.emailPlaceholder")}
+            aria-label={t("auth.emailAria")}
           />
           <button type="button" onClick={() => void signIn()} disabled={loading}>
-            {loading ? "Sending…" : "Sign in"}
+            {loading ? t("auth.sending") : t("auth.signIn")}
           </button>
         </>
       )}

@@ -2,7 +2,7 @@
 
 AI job radar and CV matching MVP for the Israeli market. It currently:
 
-- Pulls live Israel-located roles from employer feeds (Greenhouse, Lever, Ashby, Comeet)
+- Pulls live Israel-located roles from employer feeds (Greenhouse, Lever, Ashby, Comeet) plus Hebrew hi-tech listings from Drushim
 - Normalizes and deduplicates jobs across companies
 - Filters by keyword, employer, and work mode
 - Opens the original employer application page
@@ -47,7 +47,8 @@ If port 3000 is occupied, Next.js will print the alternative local port.
 | Lever | Live | Public postings API |
 | Ashby | Live | Public job-board API |
 | Comeet | Live | Public careers API; token resolved from each employer page |
-| Drushim / AllJobs / JobMaster | Planned | No official public API — see below |
+| Drushim | Live | Hebrew hi-tech listings via public search API (`catdir=25`) |
+| AllJobs / JobMaster | Planned | No official public API — see below |
 
 ### Comeet
 

@@ -1,6 +1,9 @@
 import type { CvProfile } from "./types";
+import type { ContentLanguage } from "./text-language";
+import type { Locale } from "./i18n";
+import { getCrossLanguageMatchingRule, getCvReadingRule, getPromptLanguageRule } from "./i18n";
 
-export function buildProfilePrompt(cvText: string) {
+export function buildProfilePrompt(cvText: string, locale: Locale = "en", cvLanguage: ContentLanguage = "en") {
   return `You are an expert career coach specializing in Israeli tech hiring.
 
 Read the CV carefully. Focus on the candidate's two most recent jobs (current role first, then the one before it).
@@ -32,12 +35,20 @@ Rules:
 - searchKeywords should be 6-12 short terms useful for job search (skills, domains, titles) — no full sentences.
 - careerTrajectory is one sentence explaining why idealNextRole fits based on the last two jobs.
 - Do not invent employers or titles that are not supported by the CV.
+- ${getCvReadingRule(cvLanguage)}
+- ${getCrossLanguageMatchingRule(cvLanguage, locale)}
+- ${getPromptLanguageRule(locale)}
 
 CV:
 ${cvText}`;
 }
 
-export function buildRankJobsPrompt(profile: CvProfile, jobs: Array<{ id: string; title: string; company: string; department: string; location: string; excerpt: string }>) {
+export function buildRankJobsPrompt(
+  profile: CvProfile,
+  jobs: Array<{ id: string; title: string; company: string; department: string; location: string; excerpt: string }>,
+  locale: Locale = "en",
+  cvLanguage: ContentLanguage = "en",
+) {
   return `You are an expert career coach matching candidates to live job postings in Israel.
 
 Given the candidate profile and job list, pick the 5 best matches from the list only.
@@ -59,6 +70,8 @@ Rules:
 - Rank by fit to idealNextRole and the trajectory from the last two jobs.
 - reason must be one concise sentence referencing specific overlap or gap.
 - Prefer realistic next-step roles, not unrealistic leaps.
+- ${getCrossLanguageMatchingRule(cvLanguage, locale)}
+- ${getPromptLanguageRule(locale)}
 
 CANDIDATE PROFILE:
 ${JSON.stringify(profile, null, 2)}
@@ -67,7 +80,13 @@ JOBS:
 ${JSON.stringify(jobs, null, 2)}`;
 }
 
-export function buildAnalyzePrompt(cvText: string, jobDescription: string) {
+export function buildAnalyzePrompt(
+  cvText: string,
+  jobDescription: string,
+  locale: Locale = "en",
+  cvLanguage: ContentLanguage = "en",
+  jobLanguage: ContentLanguage = "en",
+) {
   return `You are an expert career coach and ATS matching engine.
 
 Analyze the CV and the job description. Return only valid JSON matching this schema:
@@ -108,6 +127,9 @@ Rules:
 - Cover letter should be concise and professional.
 - Recruiter message should be short and human.
 - Focus on practical hiring fit.
+- ${getCvReadingRule(cvLanguage)}
+- ${getCrossLanguageMatchingRule(cvLanguage, locale, jobLanguage)}
+- ${getPromptLanguageRule(locale)}
 
 CV:
 ${cvText}

@@ -196,7 +196,38 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 16px;
+  margin-inline-start: 16px;
+}
+
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: 16px;
+  padding: 3px;
+  background: #f7f9fc;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.lang-switcher button {
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.lang-switcher button.active {
+  color: var(--navy);
+  background: white;
+  box-shadow: 0 1px 2px rgba(16, 34, 61, 0.08);
 }
 
 .auth-status input {
@@ -1511,4 +1542,58 @@ button {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+[dir="rtl"] .app-header nav {
+  margin-inline-start: clamp(36px, 7vw, 110px);
+  margin-inline-end: 0;
+}
+
+[dir="rtl"] .header-status {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+[dir="rtl"] .source-rail,
+[dir="rtl"] .job-stream {
+  border-right: 0;
+  border-inline-end: 1px solid var(--line);
+}
+
+[dir="rtl"] .source-row,
+[dir="rtl"] .job-row,
+[dir="rtl"] .recommendation-card {
+  text-align: start;
+}
+
+[dir="rtl"] .job-row::before {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .history-item ul {
+  padding-left: 0;
+  padding-inline-start: 18px;
+}
+
+[dir="rtl"] .matcher-runbar > strong {
+  margin-left: 0;
+  margin-inline-start: auto;
+}
+
+[dir="rtl"] .search-field svg {
+  transform: scaleX(-1);
+}
+
+.translation-note,
+.cv-language-badge {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cv-language-badge {
+  font-family: var(--mono);
+  letter-spacing: 0.03em;
 }

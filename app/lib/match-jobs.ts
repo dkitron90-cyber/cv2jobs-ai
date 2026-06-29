@@ -1,8 +1,11 @@
 import type { CvProfile, JobRecommendation } from "./types";
 import type { Job } from "./types";
+import type { Locale } from "./i18n";
+import { getMessages, t } from "./i18n";
+import { normalizeSearchText } from "./text-language";
 
 function normalize(value: string) {
-  return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s+#./-]/gu, " ");
+  return normalizeSearchText(value.replace(/[^\p{L}\p{N}\s+#./-]/gu, " "));
 }
 
 function keywordScore(job: Job, profile: CvProfile): number {
@@ -57,7 +60,13 @@ export function mergeRankings(
     .filter((item): item is JobRecommendation => item !== null);
 }
 
-export function fallbackRecommendations(jobs: Job[], profile: CvProfile, limit = 5): JobRecommendation[] {
+export function fallbackRecommendations(
+  jobs: Job[],
+  profile: CvProfile,
+  limit = 5,
+  locale: Locale = "en",
+): JobRecommendation[] {
+  const messages = getMessages(locale);
   return [...jobs]
     .map((job) => ({ job, score: keywordScore(job, profile) }))
     .sort((left, right) => right.score - left.score)
@@ -65,6 +74,6 @@ export function fallbackRecommendations(jobs: Job[], profile: CvProfile, limit =
     .map(({ job, score }) => ({
       job,
       matchScore: Math.min(95, 45 + score * 4),
-      reason: `Title and skills overlap with your trajectory toward ${profile.idealNextRole}.`,
+      reason: t(messages, "server.fallbackReason", { role: profile.idealNextRole }),
     }));
 }

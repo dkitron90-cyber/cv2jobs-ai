@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { AnalyzeResponse, CvProfile, Job, JobRecommendation, RecommendResponse } from "../app/lib/types";
+import type { ContentLanguage } from "../app/lib/text-language";
 import { saveMatchIfSignedIn } from "../app/lib/save-match";
+import { useLanguage } from "./LanguageProvider";
 
 type CvMatcherProps = {
   selectedJob: Job | null;
@@ -10,6 +12,7 @@ type CvMatcherProps = {
 };
 
 export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps) {
+  const { locale, t } = useLanguage();
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [activeJob, setActiveJob] = useState<Job | null>(null);
@@ -20,6 +23,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [savedNotice, setSavedNotice] = useState("");
+  const [cvLanguage, setCvLanguage] = useState<ContentLanguage | null>(null);
 
   useEffect(() => {
     if (!selectedJob) return;
@@ -34,6 +38,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setRecommendations([]);
     setResult(null);
     setError("");
+    setCvLanguage(null);
   }
 
   function selectJob(job: Job) {
@@ -50,27 +55,29 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setProfile(null);
     setRecommendations([]);
 
-    if (!file) return setError("Upload a CV first.");
+    if (!file) return setError(t("matcher.uploadFirst"));
 
     setFindingMatches(true);
     try {
       const form = new FormData();
       form.append("cv", file);
+      form.append("locale", locale);
 
       const response = await fetch("/api/recommend", { method: "POST", body: form });
       const data = (await response.json()) as RecommendResponse & { error?: string };
-      if (!response.ok) throw new Error(data.error || "Could not find matches");
+      if (!response.ok) throw new Error(data.error || t("matcher.couldNotFind"));
 
       setProfile(data.profile);
       setRecommendations(data.recommendations);
+      setCvLanguage(data.cvLanguage ?? null);
 
       if (data.recommendations.length > 0) {
         selectJob(data.recommendations[0].job);
       } else {
-        setError("No live roles matched your profile yet. Paste a job description or browse the radar.");
+        setError(t("matcher.noMatches"));
       }
     } catch (matchError) {
-      setError(matchError instanceof Error ? matchError.message : "Something went wrong");
+      setError(matchError instanceof Error ? matchError.message : t("matcher.somethingWrong"));
     } finally {
       setFindingMatches(false);
     }
@@ -81,9 +88,9 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setResult(null);
     setSavedNotice("");
 
-    if (!file) return setError("Upload a CV first.");
+    if (!file) return setError(t("matcher.uploadFirst"));
     if (!jobDescription.trim()) {
-      return setError("Find your best match from the radar, or paste a job description.");
+      return setError(t("matcher.needDescription"));
     }
 
     setLoading(true);
@@ -91,10 +98,11 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       const form = new FormData();
       form.append("cv", file);
       form.append("jobDescription", jobDescription);
+      form.append("locale", locale);
 
       const response = await fetch("/api/analyze", { method: "POST", body: form });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Analysis failed");
+      if (!response.ok) throw new Error(data.error || t("matcher.analysisFailed"));
       setResult(data);
 
       try {
@@ -102,13 +110,14 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
           activeJob,
           jobDescription,
           result: data,
+          locale,
         });
-        if (saved) setSavedNotice("Match saved to your account.");
+        if (saved) setSavedNotice(t("matcher.matchSaved"));
       } catch {
         setSavedNotice("");
       }
     } catch (analysisError) {
-      setError(analysisError instanceof Error ? analysisError.message : "Something went wrong");
+      setError(analysisError instanceof Error ? analysisError.message : t("matcher.somethingWrong"));
     } finally {
       setLoading(false);
     }
@@ -118,30 +127,30 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     <div className="matcher-shell">
       <section className="matcher-hero">
         <div>
-          <p className="eyebrow">CV match desk</p>
-          <h1>Upload your CV — we find the best fit.</h1>
-          <p>The AI reads your last two roles, infers your ideal next job, and ranks live openings from the radar.</p>
+          <p className="eyebrow">{t("matcher.eyebrow")}</p>
+          <h1>{t("matcher.title")}</h1>
+          <p>{t("matcher.hero")}</p>
         </div>
         {activeJob ? (
           <div className="selected-role-card">
-            <span>{selectedJob ? "Selected from job radar" : "Best match from your CV"}</span>
+            <span>{selectedJob ? t("matcher.selectedFromRadar") : t("matcher.bestFromCv")}</span>
             <strong>{activeJob.title}</strong>
             <p>{activeJob.company} · {activeJob.location}</p>
-            <button onClick={onBrowseJobs}>Browse all roles</button>
+            <button onClick={onBrowseJobs}>{t("matcher.browseAll")}</button>
           </div>
         ) : (
           <button className="browse-callout" onClick={onBrowseJobs}>
-            <span>Or pick manually</span>
-            Browse the Israel job radar →
+            <span>{t("matcher.pickManually")}</span>
+            {t("matcher.browseRadar")} →
           </button>
         )}
       </section>
 
       <section className="matcher-inputs">
         <label className="upload-panel">
-          <span className="step-label">01 / Your evidence</span>
-          <strong>Upload your CV</strong>
-          <p>PDF, DOCX or TXT. We focus on your two most recent jobs to infer the best next role.</p>
+          <span className="step-label">{t("matcher.stepEvidence")}</span>
+          <strong>{t("matcher.uploadCv")}</strong>
+          <p>{t("matcher.uploadHelp")}</p>
           <input
             type="file"
             accept=".pdf,.docx,.txt"
@@ -153,17 +162,26 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
             }}
           />
           <span className={file ? "file-choice chosen" : "file-choice"}>
-            {file ? file.name : "Choose CV file"}
+            {file ? file.name : t("matcher.chooseFile")}
           </span>
+          {cvLanguage && (
+            <small className="cv-language-badge">
+              {cvLanguage === "he"
+                ? t("matcher.cvLanguageHe")
+                : cvLanguage === "mixed"
+                  ? t("matcher.cvLanguageMixed")
+                  : t("matcher.cvLanguageEn")}
+            </small>
+          )}
         </label>
 
         <label className="description-panel">
-          <span className="step-label">02 / The target</span>
-          <strong>{profile ? "Suggested best match" : "Job description"}</strong>
+          <span className="step-label">{t("matcher.stepTarget")}</span>
+          <strong>{profile ? t("matcher.suggestedMatch") : t("matcher.jobDescription")}</strong>
           <p>
             {profile
-              ? `Inferred target: ${profile.idealNextRole}. Edit below or pick another recommendation.`
-              : "Find matches automatically, or paste a role / select one from the radar."}
+              ? t("matcher.inferredTarget", { role: profile.idealNextRole })
+              : t("matcher.targetHelp")}
           </p>
           <textarea
             value={jobDescription}
@@ -171,20 +189,20 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
               setJobDescription(event.target.value);
               setResult(null);
             }}
-            placeholder="Upload a CV and click Find best match, or paste a job description here…"
+            placeholder={t("matcher.targetPlaceholder")}
           />
         </label>
       </section>
 
       <div className="matcher-runbar">
         <button onClick={() => void findBestMatches()} disabled={findingMatches || loading}>
-          {findingMatches ? "Reading your last two roles…" : "Find best match"}
+          {findingMatches ? t("matcher.readingRoles") : t("matcher.findBest")}
           {!findingMatches && <span>→</span>}
         </button>
         <button className="secondary-action" onClick={() => void analyze()} disabled={loading || findingMatches}>
-          {loading ? "Analyzing evidence…" : "Analyze this match"}
+          {loading ? t("matcher.analyzing") : t("matcher.analyze")}
         </button>
-        <p>Profile · radar ranking · score · outreach</p>
+        <p>{t("matcher.runbarHint")}</p>
         {error && <strong role="alert">{error}</strong>}
         {savedNotice && <strong className="saved-notice">{savedNotice}</strong>}
       </div>
@@ -192,16 +210,16 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       {profile && (
         <section className="profile-insights">
           <article className="profile-card">
-            <span className="step-label">Career read</span>
-            <h2>{profile.candidateName || "Your profile"}</h2>
+            <span className="step-label">{t("matcher.careerRead")}</span>
+            <h2>{profile.candidateName || t("matcher.yourProfile")}</h2>
             <p className="profile-summary">{profile.summary}</p>
             <div className="profile-meta">
               <div>
-                <small>Ideal next role</small>
+                <small>{t("matcher.idealNextRole")}</small>
                 <strong>{profile.idealNextRole}</strong>
               </div>
               <div>
-                <small>Seniority</small>
+                <small>{t("matcher.seniority")}</small>
                 <strong>{profile.seniority}</strong>
               </div>
             </div>
@@ -209,7 +227,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
           </article>
 
           <article className="history-card">
-            <span className="step-label">Last two jobs</span>
+            <span className="step-label">{t("matcher.lastTwoJobs")}</span>
             <div className="history-list">
               {profile.lastTwoJobs.map((job, index) => (
                 <div className="history-item" key={`${job.company}-${job.title}-${index}`}>
@@ -230,8 +248,8 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       {recommendations.length > 0 && (
         <section className="recommendations-shell">
           <div className="recommendations-head">
-            <span className="step-label">Best matches from radar</span>
-            <h2>Top roles for your trajectory</h2>
+            <span className="step-label">{t("matcher.bestMatches")}</span>
+            <h2>{t("matcher.topRoles")}</h2>
           </div>
           <div className="recommendations-grid">
             {recommendations.map((item) => (
@@ -253,35 +271,41 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
         </section>
       )}
 
-      {result && <Results result={result} />}
+      {result && <Results result={result} t={t} />}
     </div>
   );
 }
 
-function Results({ result }: { result: AnalyzeResponse }) {
+function Results({
+  result,
+  t,
+}: {
+  result: AnalyzeResponse;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}) {
   const score = result.match.matchScore;
   return (
     <section className="results-shell">
       <div className="score-panel">
-        <span>Match score</span>
+        <span>{t("matcher.matchScore")}</span>
         <strong>{score}<small>/100</small></strong>
         <p>{result.match.verdict}</p>
       </div>
       <div className="result-content">
-        <ResultCard title="Candidate summary">
+        <ResultCard title={t("matcher.candidateSummary")}>
           <p>{result.cv.summary}</p>
-          <small>Seniority: {result.cv.seniority}</small>
-          {result.cv.idealNextRole && <small>Ideal next role: {result.cv.idealNextRole}</small>}
+          <small>{t("matcher.seniority")}: {result.cv.seniority}</small>
+          {result.cv.idealNextRole && <small>{t("matcher.idealNextRole")}: {result.cv.idealNextRole}</small>}
         </ResultCard>
         <div className="result-grid">
-          <ListCard title="Strengths" items={result.match.strengths} tone="positive" />
-          <ListCard title="Gaps" items={result.match.gaps} tone="warning" />
+          <ListCard title={t("matcher.strengths")} items={result.match.strengths} tone="positive" />
+          <ListCard title={t("matcher.gaps")} items={result.match.gaps} tone="warning" />
         </div>
-        <ListCard title="CV improvements" items={result.match.cvImprovements} />
-        <ResultCard title="Cover letter">
+        <ListCard title={t("matcher.cvImprovements")} items={result.match.cvImprovements} />
+        <ResultCard title={t("matcher.coverLetter")}>
           <pre>{result.match.coverLetter}</pre>
         </ResultCard>
-        <ResultCard title="Recruiter message">
+        <ResultCard title={t("matcher.recruiterMessage")}>
           <pre>{result.match.recruiterMessage}</pre>
         </ResultCard>
       </div>

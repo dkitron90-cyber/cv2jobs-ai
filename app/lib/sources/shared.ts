@@ -84,9 +84,9 @@ export function toPlainText(html = ""): string {
 }
 
 export function inferWorkplaceFromText(searchable: string): WorkplaceType {
-  if (/\bremote\b|עבודה מרחוק/i.test(searchable)) return "remote";
+  if (/\bremote\b|עבודה מרחוק|מהבית|מרוחק/i.test(searchable)) return "remote";
   if (/\bhybrid\b|היברידי/i.test(searchable)) return "hybrid";
-  if (/on[ -]?site|in the office|office-based/i.test(searchable)) return "on-site";
+  if (/on[ -]?site|in the office|office-based|מהמשרד|במשרד/i.test(searchable)) return "on-site";
   return "unspecified";
 }
 

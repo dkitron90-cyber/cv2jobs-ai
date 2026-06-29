@@ -53,13 +53,14 @@ export type JobRecommendation = {
 export type RecommendResponse = {
   profile: CvProfile;
   recommendations: JobRecommendation[];
+  cvLanguage?: "he" | "en" | "mixed";
 };
 
 export type WorkplaceType = "remote" | "hybrid" | "on-site" | "unspecified";
 
 export type Job = {
   id: string;
-  source: "greenhouse" | "lever" | "ashby" | "comeet";
+  source: "greenhouse" | "lever" | "ashby" | "comeet" | "drushim";
   sourceLabel: string;
   company: string;
   title: string;
