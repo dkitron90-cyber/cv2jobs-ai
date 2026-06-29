@@ -1,23 +1,18 @@
-import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
-
 export async function extractCvText(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
   const name = file.name.toLowerCase();
 
   if (name.endsWith(".docx")) {
+    const mammoth = await import("mammoth");
     const result = await mammoth.extractRawText({ buffer });
     return result.value;
   }
 
   if (name.endsWith(".pdf")) {
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const result = await parser.getText();
-      return result.text;
-    } finally {
-      await parser.destroy();
-    }
+    const { extractText, getDocumentProxy } = await import("unpdf");
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const { text } = await extractText(pdf, { mergePages: true });
+    return text;
   }
 
   if (name.endsWith(".txt")) {

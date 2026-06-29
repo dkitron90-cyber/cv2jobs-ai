@@ -14,9 +14,9 @@
     "mammoth": "latest",
     "next": "latest",
     "openai": "latest",
-    "pdf-parse": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "unpdf": "^1.6.2",
     "zod": "latest"
   },
   "devDependencies": {
