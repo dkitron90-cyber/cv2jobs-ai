@@ -35,6 +35,7 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
   const [company, setCompany] = useState("");
   const [workplace, setWorkplace] = useState("");
   const [selectedId, setSelectedId] = useState("");
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -81,16 +82,29 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
   useEffect(() => {
     if (!filteredJobs.length) {
       setSelectedId("");
+      setMobileDetailOpen(false);
       return;
     }
     if (!filteredJobs.some((job) => job.id === selectedId)) {
       setSelectedId(filteredJobs[0].id);
+      setMobileDetailOpen(false);
     }
   }, [filteredJobs, selectedId]);
 
   const selectedJob = filteredJobs.find((job) => job.id === selectedId) ?? null;
   const workingSources = data?.sources.filter((source) => source.ok).length ?? 0;
   const sourceFailures = data?.sources.filter((source) => !source.ok).length ?? 0;
+
+  function selectJob(jobId: string) {
+    setSelectedId(jobId);
+    if (window.matchMedia("(max-width: 860px)").matches) {
+      setMobileDetailOpen(true);
+    }
+  }
+
+  function closeMobileDetail() {
+    setMobileDetailOpen(false);
+  }
 
   return (
     <div className="radar-shell">
@@ -166,7 +180,7 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
         </div>
       )}
 
-      <section className="radar-workspace">
+      <section className={`radar-workspace${mobileDetailOpen ? " mobile-detail-open" : ""}`}>
         <aside className="source-rail" aria-label="Connected job sources">
           <div className="rail-heading">
             <p>Source coverage</p>
@@ -227,7 +241,7 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
               <button
                 key={job.id}
                 className={selectedId === job.id ? "job-row selected" : "job-row"}
-                onClick={() => setSelectedId(job.id)}
+                onClick={() => selectJob(job.id)}
               >
                 <span className="company-mark">{job.company.slice(0, 2).toUpperCase()}</span>
                 <span className="job-row-body">
@@ -249,6 +263,9 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
         <aside className="job-inspector" aria-live="polite">
           {selectedJob ? (
             <>
+              <button type="button" className="inspector-back" onClick={closeMobileDetail}>
+                ← Back to roles
+              </button>
               <div className="inspector-topline">
                 <span className="verified-label"><i /> {selectedJob.sourceLabel} feed</span>
                 <span>Updated {formatDate(selectedJob.updatedAt)}</span>

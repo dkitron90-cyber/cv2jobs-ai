@@ -5,11 +5,11 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    const params = request.nextUrl.searchParams;
-    const query = params.get("q")?.trim().toLocaleLowerCase() ?? "";
-    const company = params.get("company")?.trim().toLocaleLowerCase() ?? "";
-    const workplace = params.get("workplace")?.trim() ?? "";
-    const forceRefresh = params.get("refresh") === "1";
+    const searchParams = request.nextUrl.searchParams;
+    const query = searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
+    const company = searchParams.get("company")?.trim().toLocaleLowerCase() ?? "";
+    const workplace = searchParams.get("workplace")?.trim() ?? "";
+    const forceRefresh = searchParams.get("refresh") === "1";
     const snapshot = await getJobsSnapshot(forceRefresh);
 
     const jobs = snapshot.jobs.filter((job) => {
