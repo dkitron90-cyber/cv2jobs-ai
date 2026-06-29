@@ -43,6 +43,7 @@ export const COMEET_SOURCES: ComeetSource[] = [
   { id: "kayhut", company: "Kayhut", slug: "Kayhut", uid: "F0.00B" },
   { id: "imagene-ai", company: "Imagene AI", slug: "imagene-ai", uid: "D7.000" },
   { id: "moonshot", company: "Moonshot", slug: "moonshot", uid: "87.005" },
+  { id: "groundcover", company: "Groundcover", slug: "groundcover", uid: "88.008" },
 ];
 
 function isIsraelJob(job: ComeetJob): boolean {
@@ -111,7 +112,9 @@ async function resolveComeetToken(source: ComeetSource): Promise<string> {
 
   const html = await response.text();
   const match = html.match(
-    new RegExp(`"company_uid":\\s*"${source.uid.replace(/\./g, "\\.")}"[^"]*"token":\\s*"([^"]+)"`),
+    new RegExp(
+      `"company_uid"\\s*:\\s*"${source.uid.replace(/\./g, "\\.")}"[\\s\\S]*?"token"\\s*:\\s*"([^"]+)"`,
+    ),
   );
 
   if (!match?.[1]) {

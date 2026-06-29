@@ -33,6 +33,8 @@ type AshbyResponse = {
 
 export const ASHBY_SOURCES: AshbySource[] = [
   { id: "redis", company: "Redis", slug: "redis" },
+  { id: "honeybook", company: "HoneyBook", slug: "honeybook" },
+  { id: "snowflake", company: "Snowflake", slug: "snowflake" },
 ];
 
 function isIsraelJob(job: AshbyJob): boolean {

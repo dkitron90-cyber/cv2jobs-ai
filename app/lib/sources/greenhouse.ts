@@ -51,6 +51,14 @@ export const GREENHOUSE_SOURCES: GreenhouseSource[] = [
   { id: "elastic", company: "Elastic", token: "elastic" },
   { id: "datadog", company: "Datadog", token: "datadog" },
   { id: "bigid", company: "BigID", token: "bigid" },
+  { id: "transmitsecurity", company: "Transmit Security", token: "transmitsecurity" },
+  { id: "axonius", company: "Axonius", token: "axonius" },
+  { id: "bringg", company: "Bringg", token: "bringg" },
+  { id: "gitlab", company: "GitLab", token: "gitlab" },
+  { id: "databricks", company: "Databricks", token: "databricks" },
+  { id: "okta", company: "Okta", token: "okta" },
+  { id: "sisense", company: "Sisense", token: "sisense" },
+  { id: "zscaler", company: "Zscaler", token: "zscaler" },
 ];
 
 function isIsraelJob(job: GreenhouseJob): boolean {
