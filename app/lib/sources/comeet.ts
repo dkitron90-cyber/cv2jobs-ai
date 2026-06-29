@@ -44,6 +44,7 @@ export const COMEET_SOURCES: ComeetSource[] = [
   { id: "imagene-ai", company: "Imagene AI", slug: "imagene-ai", uid: "D7.000" },
   { id: "moonshot", company: "Moonshot", slug: "moonshot", uid: "87.005" },
   { id: "groundcover", company: "Groundcover", slug: "groundcover", uid: "88.008" },
+  { id: "zafran", company: "Zafran", slug: "zafran_io", uid: "49.009" },
 ];
 
 function isIsraelJob(job: ComeetJob): boolean {

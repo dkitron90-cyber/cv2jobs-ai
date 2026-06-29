@@ -5,8 +5,9 @@ const existing = new Set([
   "appsflyer", "similarweb", "riskified", "taboola", "lightricks", "yotpo", "via", "wizinc",
   "armissecurity", "melio", "jfrog", "forter", "gongio", "orcasecurity", "torq", "payoneer",
   "catonetworks", "nice", "mongodb", "fireblocks", "elastic", "datadog", "bigid",
-  "walkme", "cloudinary", "redis",
-  "crossriver", "ceva", "kayhut", "imagene-ai", "moonshot",
+  "transmitsecurity", "axonius", "bringg", "gitlab", "databricks", "okta", "sisense", "zscaler",
+  "cymulate", "walkme", "cloudinary", "redis", "honeybook", "snowflake",
+  "crossriver", "ceva", "kayhut", "imagene-ai", "moonshot", "groundcover", "zafran_io", "zafran",
 ]);
 
 const gh = [
@@ -107,6 +108,7 @@ async function probeAshby(slug) {
 const comeetPaths = [
   ["Groundcover", "groundcover/88.008"], ["Cross River", "crossriver/C7.00F"], ["Imagene AI", "imagene-ai/D7.000"],
   ["Ceva", "ceva/76.005"], ["Kayhut", "Kayhut/F0.00B"], ["Moonshot", "moonshot/87.005"],
+  ["Zafran", "zafran_io/49.009"],
   ["Pagaya", "pagaya/00.000"], ["Axonius", "axonius/00.000"], ["Transmit", "transmitsecurity/00.000"],
   ["Silverfort", "silverfort/00.000"], ["Claroty", "claroty/00.000"], ["Honeybook", "honeybook/00.000"],
   ["Personetics", "personetics/00.000"], ["Innovid", "innovid/00.000"], ["Optimove", "optimove/00.000"],

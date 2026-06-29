@@ -59,6 +59,7 @@ export const GREENHOUSE_SOURCES: GreenhouseSource[] = [
   { id: "okta", company: "Okta", token: "okta" },
   { id: "sisense", company: "Sisense", token: "sisense" },
   { id: "zscaler", company: "Zscaler", token: "zscaler" },
+  { id: "cymulate", company: "Cymulate", token: "cymulate" },
 ];
 
 function isIsraelJob(job: GreenhouseJob): boolean {
