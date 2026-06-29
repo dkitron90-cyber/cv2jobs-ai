@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AnalyzeResponse, CvProfile, Job, JobRecommendation, RecommendResponse } from "../app/lib/types";
+import { saveMatchIfSignedIn } from "../app/lib/save-match";
 
 type CvMatcherProps = {
   selectedJob: Job | null;
@@ -18,6 +19,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
   const [findingMatches, setFindingMatches] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [savedNotice, setSavedNotice] = useState("");
 
   useEffect(() => {
     if (!selectedJob) return;
@@ -44,6 +46,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
   async function findBestMatches() {
     setError("");
     setResult(null);
+    setSavedNotice("");
     setProfile(null);
     setRecommendations([]);
 
@@ -76,6 +79,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
   async function analyze() {
     setError("");
     setResult(null);
+    setSavedNotice("");
 
     if (!file) return setError("Upload a CV first.");
     if (!jobDescription.trim()) {
@@ -92,6 +96,17 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Analysis failed");
       setResult(data);
+
+      try {
+        const saved = await saveMatchIfSignedIn({
+          activeJob,
+          jobDescription,
+          result: data,
+        });
+        if (saved) setSavedNotice("Match saved to your account.");
+      } catch {
+        setSavedNotice("");
+      }
     } catch (analysisError) {
       setError(analysisError instanceof Error ? analysisError.message : "Something went wrong");
     } finally {
@@ -171,6 +186,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
         </button>
         <p>Profile · radar ranking · score · outreach</p>
         {error && <strong role="alert">{error}</strong>}
+        {savedNotice && <strong className="saved-notice">{savedNotice}</strong>}
       </div>
 
       {profile && (

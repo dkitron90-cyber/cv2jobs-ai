@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AuthStatus from "./AuthStatus";
 import JobsExplorer from "./JobsExplorer";
 import CvMatcher from "./CvMatcher";
 import type { Job } from "../app/lib/types";
@@ -28,6 +29,7 @@ export default function HomePage() {
           <button className={view === "jobs" ? "active" : ""} onClick={() => setView("jobs")}>Job radar</button>
           <button className={view === "match" ? "active" : ""} onClick={() => setView("match")}>CV matcher</button>
         </nav>
+        <AuthStatus />
         <div className="header-status"><i /> Employer feeds live</div>
       </header>
 
