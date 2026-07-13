@@ -1,4 +1,5 @@
 import type { Job, JobSourceStatus } from "./types";
+import { detectContentLanguage } from "./text-language";
 import { fetchAshbyJobs } from "./sources/ashby";
 import { fetchComeetJobs } from "./sources/comeet";
 import { fetchDrushimJobs } from "./sources/drushim";
@@ -18,6 +19,17 @@ export const JOBS_BACKGROUND_REFRESH_MS = 4 * 60 * 60 * 1000;
 let memoryCache: { expiresAt: number; snapshot: JobsSnapshot } | null = null;
 let refreshInFlight: Promise<JobsSnapshot> | null = null;
 
+function enrichJob(job: Job): Job {
+  return {
+    ...job,
+    contentLanguage: detectContentLanguage(`${job.title}\n${job.description.slice(0, 2000)}`),
+  };
+}
+
+function enrichJobs(jobs: Job[]): Job[] {
+  return jobs.map(enrichJob);
+}
+
 async function fetchFreshSnapshot(): Promise<JobsSnapshot> {
   const [greenhouse, lever, ashby, comeet, drushim] = await Promise.all([
     fetchGreenhouseJobs(),
@@ -28,13 +40,13 @@ async function fetchFreshSnapshot(): Promise<JobsSnapshot> {
   ]);
 
   return {
-    jobs: deduplicateJobs([
+    jobs: enrichJobs(deduplicateJobs([
       ...greenhouse.jobs,
       ...lever.jobs,
       ...ashby.jobs,
       ...comeet.jobs,
       ...drushim.jobs,
-    ]),
+    ])),
     sources: [...greenhouse.sources, ...lever.sources, ...ashby.sources, ...comeet.sources, ...drushim.sources],
     refreshedAt: new Date().toISOString(),
   };
@@ -71,4 +83,9 @@ export async function getJobsSnapshot(forceRefresh = false): Promise<JobsSnapsho
   }
 
   return refreshJobsSnapshot();
+}
+
+export async function getJobById(jobId: string, forceRefresh = false): Promise<Job | null> {
+  const snapshot = await getJobsSnapshot(forceRefresh);
+  return snapshot.jobs.find((job) => job.id === jobId) ?? null;
 }

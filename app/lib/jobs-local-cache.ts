@@ -1,7 +1,7 @@
 import type { JobsResponse } from "./types";
 
 const CACHE_KEY = "cv2jobs:jobs-cache";
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 type StoredJobsCache = {
   version: number;

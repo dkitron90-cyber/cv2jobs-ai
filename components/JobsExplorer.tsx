@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Job, JobsResponse, WorkplaceType } from "../app/lib/types";
+import type { Job, JobsResponse, JobSummary, WorkplaceType } from "../app/lib/types";
+import { mergeJobDescription } from "../app/lib/job-summary";
 import { readLocalJobsCache, writeLocalJobsCache } from "../app/lib/jobs-local-cache";
 import { getLocaleDateFormatter } from "../app/lib/i18n";
-import { detectContentLanguage, normalizeSearchText } from "../app/lib/text-language";
+import { normalizeSearchText } from "../app/lib/text-language";
 import { saveJob } from "../app/lib/user-data";
 import { useLanguage } from "./LanguageProvider";
 import JobDescriptionView from "./JobDescriptionView";
@@ -14,19 +15,27 @@ type JobsExplorerProps = {
   onMatchJob: (job: Job) => void;
 };
 
+function getInitialJobsState(): { data: JobsResponse | null; loading: boolean } {
+  const cached = readLocalJobsCache();
+  return { data: cached, loading: !cached };
+}
+
 export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
+  const initialState = getInitialJobsState();
   const { locale, t } = useLanguage();
   const { user } = useAuth();
-  const [data, setData] = useState<JobsResponse | null>(null);
+  const [data, setData] = useState<JobsResponse | null>(initialState.data);
   const [query, setQuery] = useState("");
   const [company, setCompany] = useState("");
   const [workplace, setWorkplace] = useState("");
   const [jobLanguage, setJobLanguage] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialState.loading);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [jobDescriptions, setJobDescriptions] = useState<Record<string, string>>({});
+  const [loadingDescriptionId, setLoadingDescriptionId] = useState("");
   const [translations, setTranslations] = useState<Record<string, { title: string; description: string; translated: boolean }>>({});
   const [translating, setTranslating] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
@@ -75,13 +84,25 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
   }
 
   useEffect(() => {
-    const cached = readLocalJobsCache();
-    if (cached) {
-      setData(cached);
-      setLoading(false);
-    }
-    void loadJobs(false, Boolean(cached));
+    void loadJobs(false, Boolean(initialState.data));
   }, []);
+
+  async function fetchJobDescription(jobId: string): Promise<string> {
+    const cached = jobDescriptions[jobId];
+    if (cached) return cached;
+
+    setLoadingDescriptionId(jobId);
+    try {
+      const response = await fetch(`/api/jobs?jobId=${encodeURIComponent(jobId)}`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || t("radar.couldNotLoad"));
+      const description = String(payload.job?.description ?? "");
+      setJobDescriptions((current) => ({ ...current, [jobId]: description }));
+      return description;
+    } finally {
+      setLoadingDescriptionId("");
+    }
+  }
 
   const companies = useMemo(
     () => [...new Set((data?.jobs ?? []).map((job) => job.company))].sort(),
@@ -92,14 +113,13 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
     const needle = normalizeSearchText(query);
     return (data?.jobs ?? []).filter((job) => {
       const searchable = normalizeSearchText(
-        [job.title, job.company, job.location, job.department, job.description].join(" "),
+        [job.title, job.company, job.location, job.department].join(" "),
       );
-      const language = detectContentLanguage(`${job.title}\n${job.description.slice(0, 2000)}`);
       return (
         (!needle || searchable.includes(needle)) &&
         (!company || job.company === company) &&
         (!workplace || job.workplace === workplace) &&
-        (!jobLanguage || language === jobLanguage)
+        (!jobLanguage || job.contentLanguage === jobLanguage)
       );
     });
   }, [company, data, jobLanguage, query, workplace]);
@@ -116,19 +136,30 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
     }
   }, [filteredJobs, selectedId]);
 
-  const selectedJob = filteredJobs.find((job) => job.id === selectedId) ?? null;
+  const selectedSummary = filteredJobs.find((job) => job.id === selectedId) ?? null;
+  const selectedJob = selectedSummary
+    ? mergeJobDescription(selectedSummary, jobDescriptions[selectedSummary.id] ?? "")
+    : null;
   const workingSources = data?.sources.filter((source) => source.ok).length ?? 0;
   const sourceFailures = data?.sources.filter((source) => !source.ok).length ?? 0;
-  const selectedTranslation = selectedJob ? translations[selectedJob.id] : undefined;
-  const displayTitle = selectedTranslation?.title ?? selectedJob?.title ?? "";
-  const displayDescription = selectedTranslation?.description ?? selectedJob?.description ?? "";
+  const selectedTranslation = selectedSummary ? translations[selectedSummary.id] : undefined;
+  const displayTitle = selectedTranslation?.title ?? selectedSummary?.title ?? "";
+  const displayDescription = selectedTranslation?.description ?? jobDescriptions[selectedSummary?.id ?? ""] ?? "";
+  const descriptionReady = Boolean(selectedSummary && jobDescriptions[selectedSummary.id]);
+  const descriptionLoading = Boolean(selectedSummary && loadingDescriptionId === selectedSummary.id);
 
   useEffect(() => {
-    if (!selectedJob || locale !== "he") return;
+    if (!selectedSummary) return;
+    if (jobDescriptions[selectedSummary.id]) return;
+    void fetchJobDescription(selectedSummary.id);
+  }, [selectedSummary?.id, jobDescriptions]);
+
+  useEffect(() => {
+    if (!selectedJob || !descriptionReady || locale !== "he") return;
     if (translations[selectedJob.id]) return;
 
     const jobId = selectedJob.id;
-    const sourceLanguage = detectContentLanguage(`${selectedJob.title}\n${selectedJob.description}`);
+    const sourceLanguage = selectedJob.contentLanguage;
 
     if (sourceLanguage === "he") {
       setTranslations((current) => ({
@@ -185,7 +216,7 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
     return () => {
       cancelled = true;
     };
-  }, [locale, selectedJob?.id, selectedJob?.title, selectedJob?.description, translations]);
+  }, [descriptionReady, locale, selectedJob?.id, selectedJob?.title, selectedJob?.description, selectedJob?.contentLanguage, translations]);
 
   function selectJob(jobId: string) {
     setSelectedId(jobId);
@@ -198,7 +229,12 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
     setMobileDetailOpen(false);
   }
 
-  async function handleSaveJob(job: Job) {
+  async function handleMatchJob(job: JobSummary) {
+    const description = jobDescriptions[job.id] || (await fetchJobDescription(job.id));
+    onMatchJob(mergeJobDescription(job, description));
+  }
+
+  async function handleSaveJob(job: JobSummary) {
     if (!user) {
       setSaveNotice(t("radar.signInToSave"));
       return;
@@ -207,7 +243,8 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
     setSavingJobId(job.id);
     setSaveNotice("");
     try {
-      await saveJob(job);
+      const description = jobDescriptions[job.id] || (await fetchJobDescription(job.id));
+      await saveJob(mergeJobDescription(job, description));
       setSaveNotice(t("radar.jobSaved"));
     } catch {
       setSaveNotice(t("radar.jobSaveFailed"));
@@ -383,19 +420,19 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
         </div>
 
         <aside className="job-inspector" aria-live="polite">
-          {selectedJob ? (
+          {selectedSummary ? (
             <>
               <button type="button" className="inspector-back" onClick={closeMobileDetail}>
                 ← {t("radar.backToRoles")}
               </button>
               <div className="inspector-topline">
-                <span className="verified-label"><i /> {selectedJob.sourceLabel} {t("radar.feed")}</span>
-                <span>{formatDate(selectedJob.updatedAt)}</span>
+                <span className="verified-label"><i /> {selectedSummary.sourceLabel} {t("radar.feed")}</span>
+                <span>{formatDate(selectedSummary.updatedAt)}</span>
               </div>
               <div className="inspector-title">
-                <span className="company-mark large">{selectedJob.company.slice(0, 2).toUpperCase()}</span>
+                <span className="company-mark large">{selectedSummary.company.slice(0, 2).toUpperCase()}</span>
                 <div>
-                  <p>{selectedJob.company}</p>
+                  <p>{selectedSummary.company}</p>
                   <h2>{displayTitle}</h2>
                 </div>
               </div>
@@ -404,29 +441,34 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
                 <p className="translation-note">{t("radar.translatedNote")}</p>
               )}
               <div className="inspector-chips">
-                <span>{selectedJob.location}</span>
-                <span>{selectedJob.department}</span>
-                <span>{workplaceLabels[selectedJob.workplace]}</span>
+                <span>{selectedSummary.location}</span>
+                <span>{selectedSummary.department}</span>
+                <span>{workplaceLabels[selectedSummary.workplace]}</span>
               </div>
               <div className="inspector-actions">
-                <button className="match-button" onClick={() => onMatchJob(selectedJob)}>
+                <button
+                  className="match-button"
+                  onClick={() => void handleMatchJob(selectedSummary)}
+                  disabled={descriptionLoading}
+                >
                   {t("radar.matchCv")} <span>→</span>
                 </button>
                 <button
                   className="save-job-button"
-                  onClick={() => void handleSaveJob(selectedJob)}
-                  disabled={savingJobId === selectedJob.id}
+                  onClick={() => void handleSaveJob(selectedSummary)}
+                  disabled={savingJobId === selectedSummary.id || descriptionLoading}
                 >
-                  {savingJobId === selectedJob.id ? "…" : t("radar.saveJob")}
+                  {savingJobId === selectedSummary.id ? "…" : t("radar.saveJob")}
                 </button>
-                <a href={selectedJob.url} target="_blank" rel="noreferrer" className="apply-link">
+                <a href={selectedSummary.url} target="_blank" rel="noreferrer" className="apply-link">
                   {t("radar.openOriginal")}
                 </a>
               </div>
               {saveNotice && <p className="save-notice">{saveNotice}</p>}
               <div className="job-description">
                 <h3>{t("radar.roleBrief")}</h3>
-                <JobDescriptionView description={displayDescription} />
+                {descriptionLoading && <p className="translation-note">{t("radar.loadingJobs")}</p>}
+                {!descriptionLoading && <JobDescriptionView description={displayDescription} />}
               </div>
             </>
           ) : (

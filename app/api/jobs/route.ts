@@ -1,16 +1,35 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { isSnapshotStale } from "../../lib/jobs-cache";
-import { getJobsSnapshot, JOBS_BACKGROUND_REFRESH_MS, refreshJobsSnapshot } from "../../lib/jobs";
+import { toJobSummaries } from "../../lib/job-summary";
+import { getJobById, getJobsSnapshot, JOBS_BACKGROUND_REFRESH_MS, refreshJobsSnapshot } from "../../lib/jobs";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+    const jobId = searchParams.get("jobId")?.trim() ?? "";
     const query = searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
     const company = searchParams.get("company")?.trim().toLocaleLowerCase() ?? "";
     const workplace = searchParams.get("workplace")?.trim() ?? "";
     const forceRefresh = searchParams.get("refresh") === "1";
+
+    if (jobId) {
+      const job = await getJobById(jobId, forceRefresh);
+      if (!job) {
+        return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      }
+
+      return NextResponse.json(
+        { job },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        },
+      );
+    }
+
     const snapshot = await getJobsSnapshot(forceRefresh);
 
     if (!forceRefresh && isSnapshotStale(snapshot.refreshedAt, JOBS_BACKGROUND_REFRESH_MS)) {
@@ -23,8 +42,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const jobs = snapshot.jobs.filter((job) => {
-      const haystack = [job.title, job.company, job.location, job.department, job.description]
+    const jobs = toJobSummaries(snapshot.jobs).filter((job) => {
+      const haystack = [job.title, job.company, job.location, job.department]
         .join(" ")
         .toLocaleLowerCase();
       return (

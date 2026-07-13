@@ -1,3 +1,5 @@
+import type { ContentLanguage } from "./text-language";
+
 export type CvJobHistory = {
   title: string;
   company: string;
@@ -79,6 +81,11 @@ export type Job = {
   url: string;
   updatedAt: string;
   workplace: WorkplaceType;
+  contentLanguage?: ContentLanguage;
+};
+
+export type JobSummary = Omit<Job, "description"> & {
+  contentLanguage: ContentLanguage;
 };
 
 export type JobSourceStatus = {
@@ -89,9 +96,13 @@ export type JobSourceStatus = {
 };
 
 export type JobsResponse = {
-  jobs: Job[];
+  jobs: JobSummary[];
   total: number;
   availableTotal: number;
   sources: JobSourceStatus[];
   refreshedAt: string;
+};
+
+export type JobDetailResponse = {
+  job: Job;
 };
