@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Job, JobsResponse, WorkplaceType } from "../app/lib/types";
+import { readLocalJobsCache, writeLocalJobsCache } from "../app/lib/jobs-local-cache";
 import { getLocaleDateFormatter } from "../app/lib/i18n";
 import { detectContentLanguage, normalizeSearchText } from "../app/lib/text-language";
 import { saveJob } from "../app/lib/user-data";
@@ -50,16 +51,23 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
     return getLocaleDateFormatter(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
   }
 
-  async function loadJobs(forceRefresh = false) {
-    forceRefresh ? setRefreshing(true) : setLoading(true);
+  async function loadJobs(forceRefresh = false, hasCachedData = false) {
+    if (forceRefresh) {
+      setRefreshing(true);
+    } else if (!hasCachedData) {
+      setLoading(true);
+    }
     setError("");
     try {
       const response = await fetch(`/api/jobs${forceRefresh ? "?refresh=1" : ""}`);
-      const payload = await response.json();
+      const payload = (await response.json()) as JobsResponse & { error?: string };
       if (!response.ok) throw new Error(payload.error || t("radar.couldNotLoad"));
       setData(payload);
+      writeLocalJobsCache(payload);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t("radar.couldNotLoad"));
+      if (!hasCachedData) {
+        setError(loadError instanceof Error ? loadError.message : t("radar.couldNotLoad"));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -67,7 +75,12 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
   }
 
   useEffect(() => {
-    void loadJobs();
+    const cached = readLocalJobsCache();
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+    }
+    void loadJobs(false, Boolean(cached));
   }, []);
 
   const companies = useMemo(
@@ -332,7 +345,7 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
             <span>{t("radar.newestFirst")}</span>
           </div>
 
-          {loading && <JobListSkeleton label={t("radar.loadingJobs")} />}
+          {loading && !data && <JobListSkeleton label={t("radar.loadingJobs")} />}
 
           {!loading && filteredJobs.length === 0 && !error && (
             <div className="empty-state">
