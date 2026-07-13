@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AnalyzeResponse, ApplyResponse, CvProfile, Job, JobRecommendation, RecommendResponse } from "../app/lib/types";
 import type { ContentLanguage } from "../app/lib/text-language";
-import { prepareApplication, type ApplyChannel } from "../app/lib/apply-client";
+import { prepareApplication, type ApplyChannel, type SendMode } from "../app/lib/apply-client";
 import { normalizeJobDescription } from "../app/lib/format-description";
 import { saveApplicationIfSignedIn, saveMatchIfSignedIn } from "../app/lib/save-match";
 import ApplicationSendPanel from "./ApplicationSendPanel";
@@ -236,7 +236,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     }
   }
 
-  async function completeSend(job: Job, application: ApplyResponse, channel: ApplyChannel) {
+  async function completeSend(job: Job, application: ApplyResponse, channel: ApplyChannel, mode: SendMode) {
     setApplications((current) => ({
       ...current,
       [job.id]: { data: application, status: "sent" },
@@ -244,15 +244,17 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setSendPanel(null);
 
     try {
-      await saveApplicationIfSignedIn({ job, application, locale });
+      await saveApplicationIfSignedIn({ job, application, locale, mode });
     } catch {
       // saving is optional
     }
 
     setApplyNotice(
-      channel === "email"
-        ? t("matcher.applyEmailHint")
-        : t("matcher.applyPortalHint"),
+      mode === "recruiter"
+        ? t("matcher.applyRecruiterHint")
+        : channel === "email"
+          ? t("matcher.applyEmailHint")
+          : t("matcher.applyPortalHint"),
     );
   }
 
@@ -300,7 +302,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
           application={sendPanel.application}
           file={file}
           onClose={() => setSendPanel(null)}
-          onComplete={(channel) => void completeSend(sendPanel.job, sendPanel.application, channel)}
+          onComplete={(channel, mode) => void completeSend(sendPanel.job, sendPanel.application, channel, mode)}
         />
       )}
       <section className="matcher-hero">

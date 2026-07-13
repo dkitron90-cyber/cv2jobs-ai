@@ -2,7 +2,7 @@
 
 AI job radar and CV matching MVP for the Israeli market. It currently:
 
-- Pulls live Israel-located roles from employer feeds (Greenhouse, Lever, Ashby, Comeet) plus Hebrew hi-tech listings from Drushim
+- Pulls live Israel-located roles from employer feeds (Greenhouse, Lever, Ashby, Comeet) plus Hebrew hi-tech listings from Drushim and LinkedIn job search results
 - Normalizes and deduplicates jobs across companies
 - Filters by keyword, employer, and work mode
 - Opens the original employer application page
@@ -48,6 +48,7 @@ If port 3000 is occupied, Next.js will print the alternative local port.
 | Ashby | Live | Public job-board API |
 | Comeet | Live | Public careers API; token resolved from each employer page |
 | Drushim | Live | Hebrew hi-tech listings via public search API (`catdir=25`) |
+| LinkedIn | Live | Guest jobs search API (no auth); descriptions lazy-loaded per job — see below |
 | AllJobs / JobMaster | Planned | No official public API — see below |
 
 ### Comeet
@@ -55,6 +56,12 @@ If port 3000 is occupied, Next.js will print the alternative local port.
 Many Israeli startups host careers on Comeet (`comeet.com/jobs/{slug}/{uid}`). Each employer exposes a public [Careers API](https://developers.comeet.com/reference/careers-api-overview). The app resolves the employer token from the public careers page, then pulls published positions with full descriptions.
 
 To add an employer, append `{ slug, uid }` to `COMEET_SOURCES` in `app/lib/sources/comeet.ts`. Both values appear in the employer’s Comeet careers URL.
+
+### LinkedIn
+
+LinkedIn exposes an unauthenticated guest endpoint (`linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search`) that serves the same job cards as the public search page. The app runs a set of keyword searches scoped to Israel and the last week (`LINKEDIN_SEARCHES` in `app/lib/sources/linkedin.ts`), parses the returned cards, and lazy-loads the full description from the guest job-posting endpoint the first time a job is opened.
+
+Requests are sequential with a small delay to stay under rate limits; if LinkedIn throttles (HTTP 429), the source degrades gracefully and the rest of the feed is unaffected. Note this endpoint is unofficial — for production volume a licensed data path (LinkedIn Talent Solutions or an approved aggregator) is the safer option.
 
 ### Licensed Israeli job boards
 

@@ -1,8 +1,8 @@
-import type { AnalyzeResponse, Job } from "./types";
+import type { AnalyzeResponse, ApplyResponse, Job } from "./types";
 import type { Locale } from "./i18n";
 import { getMessages, t } from "./i18n";
+import type { SendMode } from "./apply-client";
 import { createClient, isSupabaseConfigured } from "./supabase/client";
-import type { ApplyResponse } from "./types";
 
 export async function saveMatchIfSignedIn(params: {
   activeJob: Job | null;
@@ -45,6 +45,7 @@ export async function saveApplicationIfSignedIn(params: {
   job: Job;
   application: ApplyResponse;
   locale?: Locale;
+  mode?: SendMode;
 }) {
   if (!isSupabaseConfigured()) return null;
 
@@ -67,9 +68,11 @@ export async function saveApplicationIfSignedIn(params: {
       match_result: {
         coverLetter: params.application.coverLetter,
         recruiterMessage: params.application.recruiterMessage,
+        outreachMessage: params.application.outreachMessage,
         candidateName: params.application.candidateName,
+        sendMode: params.mode ?? "portal",
       },
-      status: "application_sent",
+      status: params.mode === "recruiter" ? "recruiter_outreach_sent" : "application_sent",
     })
     .select("id")
     .single();

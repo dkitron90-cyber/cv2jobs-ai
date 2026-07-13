@@ -126,6 +126,8 @@ Rules:
 - Weight the last two jobs heavily when judging fit and seniority.
 - Cover letter should be concise and professional.
 - Recruiter message should be short and human.
+- Mention that the candidate discovered this role through CV2Jobs AI.
+- Recruiter message should sound natural for LinkedIn or email and invite the recruiter to review the attached CV.
 - Focus on practical hiring fit.
 - ${getCvReadingRule(cvLanguage)}
 - ${getCrossLanguageMatchingRule(cvLanguage, locale, jobLanguage)}
@@ -159,7 +161,7 @@ Return only valid JSON:
 
 Rules:
 - coverLetter: concise professional letter (3-5 short paragraphs) tailored to this role and company.
-- recruiterMessage: short LinkedIn/email intro (2-4 sentences).
+- recruiterMessage: short LinkedIn/email intro (2-4 sentences) mentioning the candidate found this role through CV2Jobs AI and is sharing their CV.
 - matchScore: honest fit score 0-100.
 - Do not invent experience.
 - ${getCvReadingRule(cvLanguage)}

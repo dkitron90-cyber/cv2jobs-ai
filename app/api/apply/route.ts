@@ -4,6 +4,7 @@ import { extractCvText, parseJson } from "../../lib/extract-cv";
 import { extractContactEmail, normalizeJobDescription } from "../../lib/format-description";
 import { getErrorMessage, parseLocale } from "../../lib/i18n";
 import { buildApplyPrompt } from "../../lib/prompts";
+import { buildAiOutreachMessage } from "../../lib/outreach-message";
 import { detectContentLanguage } from "../../lib/text-language";
 import type { ApplyResponse } from "../../lib/types";
 
@@ -60,10 +61,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (existingCoverLetter && existingRecruiterMessage) {
+      const candidateName = existingCandidateName || "Candidate";
       const result: ApplyResponse = {
-        candidateName: existingCandidateName || "Candidate",
+        candidateName,
         coverLetter: existingCoverLetter,
         recruiterMessage: existingRecruiterMessage,
+        outreachMessage: buildAiOutreachMessage({
+          candidateName,
+          jobTitle,
+          company,
+          recruiterMessage: existingRecruiterMessage,
+          locale,
+        }),
         matchScore: Number.isFinite(existingMatchScore) ? existingMatchScore : 70,
         applyUrl: jobUrl,
         contactEmail: extractContactEmail(jobDescription),
@@ -94,6 +103,13 @@ export async function POST(req: NextRequest) {
       candidateName: payload.candidateName,
       coverLetter: payload.coverLetter,
       recruiterMessage: payload.recruiterMessage,
+      outreachMessage: buildAiOutreachMessage({
+        candidateName: payload.candidateName,
+        jobTitle,
+        company,
+        recruiterMessage: payload.recruiterMessage,
+        locale,
+      }),
       matchScore: payload.matchScore,
       applyUrl: jobUrl,
       contactEmail: extractContactEmail(jobDescription),

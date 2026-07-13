@@ -1,6 +1,7 @@
 import type { ApplyResponse, Job } from "./types";
 
 export type ApplyChannel = "portal" | "email" | "none" | "popup_blocked";
+export type SendMode = "portal" | "recruiter";
 
 export type PreparedApplication = ApplyResponse & {
   job: Job;
@@ -40,6 +41,20 @@ export function downloadCvFile(file: File) {
   URL.revokeObjectURL(url);
 }
 
+export function openRecruiterEmail(application: ApplyResponse): ApplyChannel {
+  if (!application.contactEmail) return "none";
+
+  const subject = encodeURIComponent(
+    `CV for ${application.candidateName} — ${application.outreachMessage.includes("CV2Jobs") ? "via CV2Jobs AI" : "application"}`,
+  );
+  const intro = application.outreachMessage.slice(0, 700).trim();
+  const body = encodeURIComponent(
+    `${intro}${application.outreachMessage.length > 700 ? "\n\n[Full message copied to your clipboard — paste it here and attach your CV.]" : "\n\n[Attach your downloaded CV file before sending.]"}`,
+  );
+  window.location.href = `mailto:${application.contactEmail}?subject=${subject}&body=${body}`;
+  return "email";
+}
+
 export function openApplyDestination(application: ApplyResponse): ApplyChannel {
   if (application.applyUrl) {
     const opened = window.open(application.applyUrl, "_blank", "noopener,noreferrer");
@@ -58,6 +73,42 @@ export function openApplyDestination(application: ApplyResponse): ApplyChannel {
   }
 
   return "none";
+}
+
+export async function sendOutreachAutomatically(params: {
+  file: File;
+  application: ApplyResponse;
+  job: Job;
+  locale: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const form = new FormData();
+  form.append("cv", params.file);
+  form.append("locale", params.locale);
+  form.append("to", params.application.contactEmail || "");
+  form.append("candidateName", params.application.candidateName);
+  form.append("jobTitle", params.job.title);
+  form.append("company", params.job.company);
+  form.append("outreachMessage", params.application.outreachMessage);
+
+  const response = await fetch("/api/send-outreach", { method: "POST", body: form });
+  const data = (await response.json()) as { ok?: boolean; error?: string };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error || "send failed" };
+  }
+
+  return { ok: true };
+}
+
+export async function isAutoOutreachAvailable() {
+  try {
+    const response = await fetch("/api/send-outreach");
+    if (!response.ok) return false;
+    const data = (await response.json()) as { available?: boolean };
+    return Boolean(data.available);
+  } catch {
+    return false;
+  }
 }
 
 export async function prepareApplication(params: PrepareApplicationOptions): Promise<ApplyResponse> {

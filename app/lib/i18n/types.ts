@@ -150,6 +150,27 @@ export type Messages = {
     sendClose: string;
     sendPreparing: string;
     sendReady: string;
+    sendModeLabel: string;
+    sendModeRecruiter: string;
+    sendModePortal: string;
+    sendRecruiterSubtitle: string;
+    sendAiBadge: string;
+    sendStepOutreach: string;
+    sendCopyOutreach: string;
+    sendStepEmailRecruiter: string;
+    sendStepPasteLinkedin: string;
+    sendEmailRecruiter: string;
+    sendNoRecruiterEmail: string;
+    sendMarkRecruiterDone: string;
+    applyRecruiterHint: string;
+    sendAutoTitle: string;
+    sendAutoSubtitle: string;
+    sendAutoButton: string;
+    sendAutoSending: string;
+    sendAutoSent: string;
+    sendAutoFailed: string;
+    sendAutoSignIn: string;
+    sendManualDivider: string;
   };
   auth: {
     emailPlaceholder: string;
@@ -189,6 +210,7 @@ export type Messages = {
     emptyCvs: string;
     matchAgain: string;
     openJob: string;
+    outreachBadge: string;
     remove: string;
     savedOn: string;
     statusMatched: string;
@@ -211,6 +233,9 @@ export type Messages = {
     unsupportedFile: string;
     refreshFailed: string;
     unknown: string;
+    signInRequired: string;
+    invalidRecruiterEmail: string;
+    outreachMessageRequired: string;
   };
   server: {
     fallbackReason: string;

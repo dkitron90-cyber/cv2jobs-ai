@@ -17,6 +17,7 @@
     "openai": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "resend": "^6.17.2",
     "unpdf": "^1.6.2",
     "zod": "latest"
   },

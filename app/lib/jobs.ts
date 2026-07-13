@@ -5,6 +5,7 @@ import { fetchComeetJobs } from "./sources/comeet";
 import { fetchDrushimJobs } from "./sources/drushim";
 import { fetchGreenhouseJobs } from "./sources/greenhouse";
 import { fetchLeverJobs } from "./sources/lever";
+import { fetchLinkedInJobs, fetchLinkedInJobDescription } from "./sources/linkedin";
 import { deduplicateJobs } from "./sources/shared";
 import { loadPersistedSnapshot, savePersistedSnapshot } from "./jobs-cache";
 
@@ -31,12 +32,13 @@ function enrichJobs(jobs: Job[]): Job[] {
 }
 
 async function fetchFreshSnapshot(): Promise<JobsSnapshot> {
-  const [greenhouse, lever, ashby, comeet, drushim] = await Promise.all([
+  const [greenhouse, lever, ashby, comeet, drushim, linkedin] = await Promise.all([
     fetchGreenhouseJobs(),
     fetchLeverJobs(),
     fetchAshbyJobs(),
     fetchComeetJobs(),
     fetchDrushimJobs(),
+    fetchLinkedInJobs(),
   ]);
 
   return {
@@ -46,8 +48,16 @@ async function fetchFreshSnapshot(): Promise<JobsSnapshot> {
       ...ashby.jobs,
       ...comeet.jobs,
       ...drushim.jobs,
+      ...linkedin.jobs,
     ])),
-    sources: [...greenhouse.sources, ...lever.sources, ...ashby.sources, ...comeet.sources, ...drushim.sources],
+    sources: [
+      ...greenhouse.sources,
+      ...lever.sources,
+      ...ashby.sources,
+      ...comeet.sources,
+      ...drushim.sources,
+      ...linkedin.sources,
+    ],
     refreshedAt: new Date().toISOString(),
   };
 }
@@ -87,5 +97,17 @@ export async function getJobsSnapshot(forceRefresh = false): Promise<JobsSnapsho
 
 export async function getJobById(jobId: string, forceRefresh = false): Promise<Job | null> {
   const snapshot = await getJobsSnapshot(forceRefresh);
-  return snapshot.jobs.find((job) => job.id === jobId) ?? null;
+  const job = snapshot.jobs.find((entry) => entry.id === jobId) ?? null;
+  if (!job) return null;
+
+  // LinkedIn search results do not include descriptions; fetch on first open.
+  if (job.source === "linkedin" && !job.description) {
+    const description = await fetchLinkedInJobDescription(job.id);
+    if (description) {
+      job.description = description;
+      job.contentLanguage = detectContentLanguage(`${job.title}\n${description.slice(0, 2000)}`);
+    }
+  }
+
+  return job;
 }

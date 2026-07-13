@@ -64,6 +64,7 @@ export type ApplyResponse = {
   candidateName: string;
   coverLetter: string;
   recruiterMessage: string;
+  outreachMessage: string;
   matchScore: number;
   applyUrl: string;
   contactEmail: string | null;

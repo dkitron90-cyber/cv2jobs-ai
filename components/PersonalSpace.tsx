@@ -51,18 +51,23 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
     setLoading(true);
     setError("");
     try {
-      const [profileData, saved, matched, applied, cvRows] = await Promise.all([
+      const [profileData, saved, matched, applied, recruiterOutreach, cvRows] = await Promise.all([
         fetchProfile(),
         fetchSavedJobs(),
         fetchJobMatches("matched"),
         fetchJobMatches("application_sent"),
+        fetchJobMatches("recruiter_outreach_sent"),
         fetchCvs(),
       ]);
       setProfile(profileData);
       setFullName(profileData?.full_name ?? "");
       setSavedJobs(saved);
       setMatches(matched);
-      setApplications(applied);
+      setApplications(
+        [...recruiterOutreach, ...applied].sort(
+          (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+        ),
+      );
       setCvs(cvRows);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("space.loadFailed"));
@@ -384,6 +389,7 @@ function ApplicationCard({
   const [showLetter, setShowLetter] = useState(false);
   const coverLetter =
     typeof row.match_result?.coverLetter === "string" ? row.match_result.coverLetter : "";
+  const isRecruiterOutreach = row.status === "recruiter_outreach_sent";
 
   return (
     <article className="space-card">
@@ -392,6 +398,7 @@ function ApplicationCard({
         {row.match_score != null && <span className="space-score">{row.match_score}</span>}
       </div>
       <p>{row.company}</p>
+      {isRecruiterOutreach && <span className="space-outreach-badge">{t("space.outreachBadge")}</span>}
       <small>{dateFormatter.format(new Date(row.created_at))}</small>
       <div className="space-card-actions">
         {row.job_url && (
