@@ -11,6 +11,9 @@ export type Messages = {
     cvMatcher: string;
     mySpace: string;
     feedsLive: string;
+    jobRadarShort: string;
+    cvMatcherShort: string;
+    mySpaceShort: string;
   };
   lang: {
     switch: string;
@@ -53,6 +56,7 @@ export type Messages = {
     openOriginal: string;
     roleBrief: string;
     selectRole: string;
+    openCvMatcher: string;
     recentlyUpdated: string;
     justNow: string;
     couldNotLoad: string;

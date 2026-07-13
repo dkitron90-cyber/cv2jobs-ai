@@ -11,6 +11,9 @@ export const messages: Messages = {
     cvMatcher: "CV matcher",
     mySpace: "My space",
     feedsLive: "Employer feeds live",
+    jobRadarShort: "Jobs",
+    cvMatcherShort: "Matcher",
+    mySpaceShort: "Space",
   },
   lang: {
     switch: "Language",
@@ -58,6 +61,7 @@ export const messages: Messages = {
     openOriginal: "Open original",
     roleBrief: "Role brief",
     selectRole: "Select a role to inspect its details.",
+    openCvMatcher: "Open CV matcher",
     recentlyUpdated: "Recently updated",
     justNow: "just now",
     couldNotLoad: "Could not load jobs",

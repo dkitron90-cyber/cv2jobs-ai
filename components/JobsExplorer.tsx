@@ -13,6 +13,7 @@ import { useAuth } from "./useAuth";
 
 type JobsExplorerProps = {
   onMatchJob: (job: Job) => void;
+  onOpenMatcher: () => void;
 };
 
 function getInitialJobsState(): { data: JobsResponse | null; loading: boolean } {
@@ -20,7 +21,7 @@ function getInitialJobsState(): { data: JobsResponse | null; loading: boolean } 
   return { data: cached, loading: !cached };
 }
 
-export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
+export default function JobsExplorer({ onMatchJob, onOpenMatcher }: JobsExplorerProps) {
   const initialState = getInitialJobsState();
   const { locale, t } = useLanguage();
   const { user } = useAuth();
@@ -260,6 +261,9 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
           <p className="eyebrow">{t("radar.eyebrow")}</p>
           <h1>{t("radar.title")}</h1>
           <p className="hero-copy">{t("radar.hero")}</p>
+          <button type="button" className="radar-matcher-cta" onClick={onOpenMatcher}>
+            {t("radar.openCvMatcher")} <span aria-hidden="true">→</span>
+          </button>
         </div>
         <div className="radar-scope" aria-label={t("radar.liveRoles")}>
           <div className="scope-rings" aria-hidden="true">

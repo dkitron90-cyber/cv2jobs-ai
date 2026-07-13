@@ -11,6 +11,9 @@ export const messages: Messages = {
     cvMatcher: "התאמת קו\"ח",
     mySpace: "המרחב שלי",
     feedsLive: "פידים חיים ממעסיקים",
+    jobRadarShort: "משרות",
+    cvMatcherShort: "התאמה",
+    mySpaceShort: "שלי",
   },
   lang: {
     switch: "שפה",
@@ -58,6 +61,7 @@ export const messages: Messages = {
     openOriginal: "פתחו מקור",
     roleBrief: "תקציר התפקיד",
     selectRole: "בחרו משרה כדי לראות פרטים.",
+    openCvMatcher: "פתחו התאמת קו\"ח",
     recentlyUpdated: "עודכן לאחרונה",
     justNow: "עכשיו",
     couldNotLoad: "לא ניתן לטעון משרות",

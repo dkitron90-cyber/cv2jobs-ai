@@ -13,6 +13,12 @@ type View = "jobs" | "match" | "space";
 
 const NAV_ITEMS: View[] = ["jobs", "match", "space"];
 
+const NAV_SHORT_KEYS: Record<View, "jobRadarShort" | "cvMatcherShort" | "mySpaceShort"> = {
+  jobs: "jobRadarShort",
+  match: "cvMatcherShort",
+  space: "mySpaceShort",
+};
+
 export default function HomePage() {
   const { t } = useLanguage();
   const [view, setView] = useState<View>("jobs");
@@ -24,11 +30,31 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function openMatcher() {
+    setView("match");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const navLabels: Record<View, string> = {
     jobs: t("nav.jobRadar"),
     match: t("nav.cvMatcher"),
     space: t("nav.mySpace"),
   };
+
+  function renderNavButton(item: View, compact = false) {
+    return (
+      <button
+        key={item}
+        type="button"
+        className={view === item ? "active" : ""}
+        data-nav={item}
+        onClick={() => setView(item)}
+        aria-current={view === item ? "page" : undefined}
+      >
+        <span className="nav-button-label">{compact ? t(`nav.${NAV_SHORT_KEYS[item]}`) : navLabels[item]}</span>
+      </button>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -42,18 +68,8 @@ export default function HomePage() {
             </span>
           </button>
 
-          <nav className="app-nav-pills" aria-label={t("nav.main")}>
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={view === item ? "active" : ""}
-                onClick={() => setView(item)}
-                aria-current={view === item ? "page" : undefined}
-              >
-                {navLabels[item]}
-              </button>
-            ))}
+          <nav className="app-nav-pills app-nav-desktop" aria-label={t("nav.main")}>
+            {NAV_ITEMS.map((item) => renderNavButton(item))}
           </nav>
 
           <div className="app-header-actions">
@@ -69,7 +85,7 @@ export default function HomePage() {
 
       <main className="app-main">
         <div className={view === "jobs" ? "view-panel" : "view-panel hidden"}>
-          <JobsExplorer onMatchJob={matchJob} />
+          <JobsExplorer onMatchJob={matchJob} onOpenMatcher={openMatcher} />
         </div>
         <div className={view === "match" ? "view-panel" : "view-panel hidden"}>
           <CvMatcher selectedJob={selectedJob} onBrowseJobs={() => setView("jobs")} />
@@ -78,6 +94,10 @@ export default function HomePage() {
           <PersonalSpace onMatchJob={matchJob} onBrowseJobs={() => setView("jobs")} />
         </div>
       </main>
+
+      <nav className="app-bottom-nav" aria-label={t("nav.main")}>
+        {NAV_ITEMS.map((item) => renderNavButton(item, true))}
+      </nav>
     </div>
   );
 }
