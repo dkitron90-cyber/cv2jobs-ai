@@ -5,6 +5,7 @@ import {
   isIsraelLocation,
   toPlainText,
 } from "./shared";
+import { normalizeJobDescription } from "../format-description";
 
 type ComeetSource = {
   id: string;
@@ -55,17 +56,18 @@ function isIsraelJob(job: ComeetJob): boolean {
 }
 
 function buildDescription(job: ComeetJob): string {
-  return (job.details ?? [])
-    .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((detail) => {
-      const heading = detail.name?.trim();
-      const body = toPlainText(detail.value);
-      return heading && body ? `${heading}\n${body}` : body;
-    })
-    .filter(Boolean)
-    .join("\n\n")
-    .trim();
+  return normalizeJobDescription(
+    (job.details ?? [])
+      .slice()
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((detail) => {
+        const heading = detail.name?.trim();
+        const body = toPlainText(detail.value);
+        return heading && body ? `${heading}\n${body}` : body;
+      })
+      .filter(Boolean)
+      .join("\n\n"),
+  );
 }
 
 function inferWorkplace(job: ComeetJob): Job["workplace"] {

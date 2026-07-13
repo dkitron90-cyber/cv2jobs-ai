@@ -5,6 +5,7 @@ import type { Job, JobsResponse, WorkplaceType } from "../app/lib/types";
 import { getLocaleDateFormatter } from "../app/lib/i18n";
 import { detectContentLanguage, normalizeSearchText } from "../app/lib/text-language";
 import { useLanguage } from "./LanguageProvider";
+import JobDescriptionView from "./JobDescriptionView";
 
 type JobsExplorerProps = {
   onMatchJob: (job: Job) => void;
@@ -381,11 +382,7 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
               </div>
               <div className="job-description">
                 <h3>{t("radar.roleBrief")}</h3>
-                {displayDescription
-                  .split(/\n{2,}/)
-                  .filter(Boolean)
-                  .slice(0, 12)
-                  .map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+                <JobDescriptionView description={displayDescription} />
               </div>
             </>
           ) : (

@@ -1,14 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { AnalyzeResponse, CvProfile, Job, JobRecommendation, RecommendResponse } from "../app/lib/types";
+import type { AnalyzeResponse, ApplyResponse, CvProfile, Job, JobRecommendation, RecommendResponse } from "../app/lib/types";
 import type { ContentLanguage } from "../app/lib/text-language";
-import { saveMatchIfSignedIn } from "../app/lib/save-match";
+import { prepareApplication, sendApplicationPackage } from "../app/lib/apply-client";
+import { normalizeJobDescription } from "../app/lib/format-description";
+import { saveApplicationIfSignedIn, saveMatchIfSignedIn } from "../app/lib/save-match";
 import { useLanguage } from "./LanguageProvider";
 
 type CvMatcherProps = {
   selectedJob: Job | null;
   onBrowseJobs: () => void;
+};
+
+type ApplicationState = {
+  data: ApplyResponse;
+  status: "ready" | "sent";
 };
 
 export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps) {
@@ -23,12 +30,16 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [savedNotice, setSavedNotice] = useState("");
+  const [applyNotice, setApplyNotice] = useState("");
   const [cvLanguage, setCvLanguage] = useState<ContentLanguage | null>(null);
+  const [applications, setApplications] = useState<Record<string, ApplicationState>>({});
+  const [applyingJobId, setApplyingJobId] = useState("");
+  const [preparingAll, setPreparingAll] = useState(false);
 
   useEffect(() => {
     if (!selectedJob) return;
     setActiveJob(selectedJob);
-    setJobDescription(selectedJob.description);
+    setJobDescription(normalizeJobDescription(selectedJob.description));
     setResult(null);
     setError("");
   }, [selectedJob]);
@@ -39,11 +50,13 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setResult(null);
     setError("");
     setCvLanguage(null);
+    setApplications({});
+    setApplyNotice("");
   }
 
   function selectJob(job: Job) {
     setActiveJob(job);
-    setJobDescription(job.description);
+    setJobDescription(normalizeJobDescription(job.description));
     setResult(null);
     setError("");
   }
@@ -52,8 +65,10 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setError("");
     setResult(null);
     setSavedNotice("");
+    setApplyNotice("");
     setProfile(null);
     setRecommendations([]);
+    setApplications({});
 
     if (!file) return setError(t("matcher.uploadFirst"));
 
@@ -87,6 +102,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setError("");
     setResult(null);
     setSavedNotice("");
+    setApplyNotice("");
 
     if (!file) return setError(t("matcher.uploadFirst"));
     if (!jobDescription.trim()) {
@@ -123,6 +139,87 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     }
   }
 
+  async function applyToJob(job: Job) {
+    if (!file) return setError(t("matcher.uploadFirst"));
+
+    setApplyingJobId(job.id);
+    setApplyNotice("");
+    setError("");
+
+    try {
+      let application = applications[job.id]?.data;
+      if (!application) {
+        application = await prepareApplication({ file, job, locale });
+        setApplications((current) => ({
+          ...current,
+          [job.id]: { data: application as ApplyResponse, status: "ready" },
+        }));
+      }
+
+      const channel = await sendApplicationPackage(file, application);
+      setApplications((current) => ({
+        ...current,
+        [job.id]: { data: application as ApplyResponse, status: "sent" },
+      }));
+
+      try {
+        await saveApplicationIfSignedIn({ job, application: application as ApplyResponse, locale });
+      } catch {
+        // saving is optional
+      }
+
+      setApplyNotice(
+        channel === "email"
+          ? t("matcher.applyEmailHint")
+          : t("matcher.applyPortalHint"),
+      );
+    } catch (applyError) {
+      setError(
+        applyError instanceof Error
+          ? applyError.message
+          : t("matcher.applyFailed", { company: job.company }),
+      );
+    } finally {
+      setApplyingJobId("");
+    }
+  }
+
+  async function prepareAllApplications() {
+    if (!file || recommendations.length === 0) return setError(t("matcher.uploadFirst"));
+
+    setPreparingAll(true);
+    setApplyNotice("");
+    setError("");
+
+    try {
+      const prepared = await Promise.all(
+        recommendations.map(async (item) => {
+          if (applications[item.job.id]?.data) {
+            return [item.job.id, applications[item.job.id].data] as const;
+          }
+          const data = await prepareApplication({ file, job: item.job, locale });
+          return [item.job.id, data] as const;
+        }),
+      );
+
+      setApplications((current) => {
+        const next = { ...current };
+        for (const [jobId, data] of prepared) {
+          next[jobId] = { data, status: current[jobId]?.status === "sent" ? "sent" : "ready" };
+        }
+        return next;
+      });
+      setApplyNotice(t("matcher.applicationQueueHint"));
+    } catch (batchError) {
+      setError(batchError instanceof Error ? batchError.message : t("matcher.somethingWrong"));
+    } finally {
+      setPreparingAll(false);
+    }
+  }
+
+  const readyApplications = recommendations.filter((item) => applications[item.job.id]?.status === "ready");
+  const sentApplications = recommendations.filter((item) => applications[item.job.id]?.status === "sent");
+
   return (
     <div className="matcher-shell">
       <section className="matcher-hero">
@@ -136,7 +233,18 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
             <span>{selectedJob ? t("matcher.selectedFromRadar") : t("matcher.bestFromCv")}</span>
             <strong>{activeJob.title}</strong>
             <p>{activeJob.company} · {activeJob.location}</p>
-            <button onClick={onBrowseJobs}>{t("matcher.browseAll")}</button>
+            <div className="selected-role-actions">
+              <button onClick={onBrowseJobs}>{t("matcher.browseAll")}</button>
+              {file && (
+                <button
+                  className="apply-inline-button"
+                  onClick={() => void applyToJob(activeJob)}
+                  disabled={Boolean(applyingJobId)}
+                >
+                  {applyingJobId === activeJob.id ? t("matcher.sendingCv") : t("matcher.sendCv")}
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <button className="browse-callout" onClick={onBrowseJobs}>
@@ -195,16 +303,17 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       </section>
 
       <div className="matcher-runbar">
-        <button onClick={() => void findBestMatches()} disabled={findingMatches || loading}>
+        <button onClick={() => void findBestMatches()} disabled={findingMatches || loading || preparingAll}>
           {findingMatches ? t("matcher.readingRoles") : t("matcher.findBest")}
           {!findingMatches && <span>→</span>}
         </button>
-        <button className="secondary-action" onClick={() => void analyze()} disabled={loading || findingMatches}>
+        <button className="secondary-action" onClick={() => void analyze()} disabled={loading || findingMatches || preparingAll}>
           {loading ? t("matcher.analyzing") : t("matcher.analyze")}
         </button>
         <p>{t("matcher.runbarHint")}</p>
         {error && <strong role="alert">{error}</strong>}
         {savedNotice && <strong className="saved-notice">{savedNotice}</strong>}
+        {applyNotice && <strong className="apply-notice">{applyNotice}</strong>}
       </div>
 
       {profile && (
@@ -248,30 +357,98 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       {recommendations.length > 0 && (
         <section className="recommendations-shell">
           <div className="recommendations-head">
-            <span className="step-label">{t("matcher.bestMatches")}</span>
-            <h2>{t("matcher.topRoles")}</h2>
+            <div>
+              <span className="step-label">{t("matcher.bestMatches")}</span>
+              <h2>{t("matcher.topRoles")}</h2>
+              <p className="apply-hint">{t("matcher.applyHint")}</p>
+            </div>
+            {file && (
+              <button
+                className="apply-all-button"
+                onClick={() => void prepareAllApplications()}
+                disabled={preparingAll || Boolean(applyingJobId)}
+              >
+                {preparingAll ? t("matcher.applyingAll") : t("matcher.applyAll")}
+              </button>
+            )}
           </div>
           <div className="recommendations-grid">
-            {recommendations.map((item) => (
-              <button
-                key={item.job.id}
-                type="button"
-                className={activeJob?.id === item.job.id ? "recommendation-card active" : "recommendation-card"}
-                onClick={() => selectJob(item.job)}
-              >
-                <div className="recommendation-score">{item.matchScore}</div>
-                <div>
-                  <strong>{item.job.title}</strong>
-                  <p>{item.job.company} · {item.job.location}</p>
-                  <small>{item.reason}</small>
-                </div>
-              </button>
-            ))}
+            {recommendations.map((item) => {
+              const application = applications[item.job.id];
+              const isApplying = applyingJobId === item.job.id;
+
+              return (
+                <article
+                  key={item.job.id}
+                  className={activeJob?.id === item.job.id ? "recommendation-card active" : "recommendation-card"}
+                >
+                  <button type="button" className="recommendation-select" onClick={() => selectJob(item.job)}>
+                    <div className="recommendation-score">{item.matchScore}</div>
+                    <div>
+                      <strong>{item.job.title}</strong>
+                      <p>{item.job.company} · {item.job.location}</p>
+                      <small>{item.reason}</small>
+                    </div>
+                  </button>
+                  {file && (
+                    <div className="recommendation-actions">
+                      <button
+                        type="button"
+                        className="apply-button"
+                        onClick={() => void applyToJob(item.job)}
+                        disabled={Boolean(applyingJobId) || preparingAll}
+                      >
+                        {isApplying
+                          ? t("matcher.sendingCv")
+                          : application?.status === "sent"
+                            ? t("matcher.openApplyPage")
+                            : t("matcher.sendCv")}
+                      </button>
+                      {application?.status === "sent" && (
+                        <span className="apply-status sent">{t("matcher.applySent", { company: item.job.company })}</span>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
+
+          {readyApplications.length > 0 && (
+            <div className="application-queue">
+              <h3>{t("matcher.applicationQueue")}</h3>
+              <p>{t("matcher.applicationQueueHint")}</p>
+              <ul>
+                {readyApplications.map((item) => (
+                  <li key={item.job.id}>
+                    <span>{item.job.company} — {item.job.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => void applyToJob(item.job)}
+                      disabled={Boolean(applyingJobId)}
+                    >
+                      {t("matcher.sendCv")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {sentApplications.length > 0 && !readyApplications.length && (
+            <p className="apply-hint">{t("matcher.applyReady")}</p>
+          )}
         </section>
       )}
 
-      {result && <Results result={result} t={t} />}
+      {result && (
+        <Results
+          result={result}
+          t={t}
+          onSendCv={activeJob && file ? () => void applyToJob(activeJob) : undefined}
+          sending={Boolean(applyingJobId)}
+        />
+      )}
     </div>
   );
 }
@@ -279,9 +456,13 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
 function Results({
   result,
   t,
+  onSendCv,
+  sending,
 }: {
   result: AnalyzeResponse;
   t: (key: string, vars?: Record<string, string | number>) => string;
+  onSendCv?: () => void;
+  sending?: boolean;
 }) {
   const score = result.match.matchScore;
   return (
@@ -290,6 +471,11 @@ function Results({
         <span>{t("matcher.matchScore")}</span>
         <strong>{score}<small>/100</small></strong>
         <p>{result.match.verdict}</p>
+        {onSendCv && (
+          <button className="apply-button score-apply" onClick={onSendCv} disabled={sending}>
+            {sending ? t("matcher.sendingCv") : t("matcher.sendCv")}
+          </button>
+        )}
       </div>
       <div className="result-content">
         <ResultCard title={t("matcher.candidateSummary")}>
@@ -303,10 +489,10 @@ function Results({
         </div>
         <ListCard title={t("matcher.cvImprovements")} items={result.match.cvImprovements} />
         <ResultCard title={t("matcher.coverLetter")}>
-          <pre>{result.match.coverLetter}</pre>
+          <div className="prose-block">{result.match.coverLetter}</div>
         </ResultCard>
         <ResultCard title={t("matcher.recruiterMessage")}>
-          <pre>{result.match.recruiterMessage}</pre>
+          <div className="prose-block">{result.match.recruiterMessage}</div>
         </ResultCard>
       </div>
     </section>

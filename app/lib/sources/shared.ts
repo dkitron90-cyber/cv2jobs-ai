@@ -1,4 +1,5 @@
 import type { Job, WorkplaceType } from "../types";
+import { normalizeJobDescription } from "../format-description";
 
 export const ISRAEL_LOCATION_PATTERN = new RegExp(
   [
@@ -69,17 +70,19 @@ export function decodeEntities(value: string): string {
 }
 
 export function toPlainText(html = ""): string {
-  return decodeEntities(
-    html
-      .replace(/<br\s*\/?\s*>/gi, "\n")
-      .replace(/<\/p>/gi, "\n\n")
-      .replace(/<\/li>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\r/g, "")
-      .replace(/[ \t]+/g, " ")
-      .replace(/\n[ \t]+/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim(),
+  return normalizeJobDescription(
+    decodeEntities(
+      html
+        .replace(/<br\s*\/?\s*>/gi, "\n")
+        .replace(/<\/p>/gi, "\n\n")
+        .replace(/<\/li>/gi, "\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\r/g, "")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n[ \t]+/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim(),
+    ),
   );
 }
 

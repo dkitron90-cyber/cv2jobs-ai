@@ -137,3 +137,40 @@ ${cvText}
 JOB DESCRIPTION:
 ${jobDescription}`;
 }
+
+export function buildApplyPrompt(
+  cvText: string,
+  jobTitle: string,
+  company: string,
+  jobDescription: string,
+  locale: Locale = "en",
+  cvLanguage: ContentLanguage = "en",
+  jobLanguage: ContentLanguage = "en",
+) {
+  return `You are an expert career coach preparing a job application package for an Israeli tech candidate.
+
+Return only valid JSON:
+{
+  "candidateName": "string",
+  "coverLetter": "string",
+  "recruiterMessage": "string",
+  "matchScore": number
+}
+
+Rules:
+- coverLetter: concise professional letter (3-5 short paragraphs) tailored to this role and company.
+- recruiterMessage: short LinkedIn/email intro (2-4 sentences).
+- matchScore: honest fit score 0-100.
+- Do not invent experience.
+- ${getCvReadingRule(cvLanguage)}
+- ${getCrossLanguageMatchingRule(cvLanguage, locale, jobLanguage)}
+- ${getPromptLanguageRule(locale)}
+
+ROLE: ${jobTitle} at ${company}
+
+CV:
+${cvText}
+
+JOB DESCRIPTION:
+${jobDescription}`;
+}

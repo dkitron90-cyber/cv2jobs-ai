@@ -112,6 +112,19 @@ export type Messages = {
     cvLanguageHe: string;
     cvLanguageEn: string;
     cvLanguageMixed: string;
+    sendCv: string;
+    sendingCv: string;
+    applyAll: string;
+    applyingAll: string;
+    applyReady: string;
+    applySent: string;
+    applyFailed: string;
+    applyHint: string;
+    applyPortalHint: string;
+    applyEmailHint: string;
+    openApplyPage: string;
+    applicationQueue: string;
+    applicationQueueHint: string;
   };
   auth: {
     emailPlaceholder: string;

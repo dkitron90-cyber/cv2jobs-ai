@@ -2,6 +2,7 @@ import type { AnalyzeResponse, Job } from "./types";
 import type { Locale } from "./i18n";
 import { getMessages, t } from "./i18n";
 import { createClient, isSupabaseConfigured } from "./supabase/client";
+import type { ApplyResponse } from "./types";
 
 export async function saveMatchIfSignedIn(params: {
   activeJob: Job | null;
@@ -32,6 +33,43 @@ export async function saveMatchIfSignedIn(params: {
       match_score: params.result.match.matchScore,
       match_result: params.result,
       status: "matched",
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function saveApplicationIfSignedIn(params: {
+  job: Job;
+  application: ApplyResponse;
+  locale?: Locale;
+}) {
+  if (!isSupabaseConfigured()) return null;
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("job_matches")
+    .insert({
+      profile_id: user.id,
+      job_title: params.job.title,
+      company: params.job.company,
+      job_url: params.job.url,
+      job_description: params.job.description,
+      match_score: params.application.matchScore,
+      match_result: {
+        coverLetter: params.application.coverLetter,
+        recruiterMessage: params.application.recruiterMessage,
+        candidateName: params.application.candidateName,
+      },
+      status: "application_sent",
     })
     .select("id")
     .single();

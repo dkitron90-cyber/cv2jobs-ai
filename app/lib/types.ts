@@ -56,6 +56,15 @@ export type RecommendResponse = {
   cvLanguage?: "he" | "en" | "mixed";
 };
 
+export type ApplyResponse = {
+  candidateName: string;
+  coverLetter: string;
+  recruiterMessage: string;
+  matchScore: number;
+  applyUrl: string;
+  contactEmail: string | null;
+};
+
 export type WorkplaceType = "remote" | "hybrid" | "on-site" | "unspecified";
 
 export type Job = {

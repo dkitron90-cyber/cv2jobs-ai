@@ -3,6 +3,13 @@ import type { Job } from "./types";
 import type { Locale } from "./i18n";
 import { getMessages, t } from "./i18n";
 import { normalizeSearchText } from "./text-language";
+import { normalizeJobDescription } from "./format-description";
+
+function sanitizeReason(reason: string): string {
+  const trimmed = reason.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return trimmed;
+  return normalizeJobDescription(trimmed) || trimmed;
+}
 
 function normalize(value: string) {
   return normalizeSearchText(value.replace(/[^\p{L}\p{N}\s+#./-]/gu, " "));
@@ -54,7 +61,7 @@ export function mergeRankings(
       return {
         job,
         matchScore: ranking.matchScore,
-        reason: ranking.reason,
+        reason: sanitizeReason(ranking.reason),
       };
     })
     .filter((item): item is JobRecommendation => item !== null);
