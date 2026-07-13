@@ -134,6 +134,22 @@ export type Messages = {
     openApplyPage: string;
     applicationQueue: string;
     applicationQueueHint: string;
+    sendPanelTitle: string;
+    sendPanelSubtitle: string;
+    sendStepCv: string;
+    sendStepLetter: string;
+    sendStepMessage: string;
+    sendStepPortal: string;
+    sendDownloadCv: string;
+    sendCopyLetter: string;
+    sendCopyMessage: string;
+    sendCopied: string;
+    sendOpenPortal: string;
+    sendPopupBlocked: string;
+    sendMarkDone: string;
+    sendClose: string;
+    sendPreparing: string;
+    sendReady: string;
   };
   auth: {
     emailPlaceholder: string;

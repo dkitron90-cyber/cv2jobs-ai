@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     const candidates = prefilterJobs(snapshot.jobs, profile);
 
     if (candidates.length === 0) {
-      const payload: RecommendResponse = { profile, recommendations: [], cvLanguage };
+      const payload: RecommendResponse = { profile, recommendations: [], cvLanguage, cvText };
       return NextResponse.json(payload);
     }
 
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       recommendations = fallbackRecommendations(candidates, profile, 5, locale);
     }
 
-    const payload: RecommendResponse = { profile, recommendations, cvLanguage };
+    const payload: RecommendResponse = { profile, recommendations, cvLanguage, cvText };
     return NextResponse.json(payload);
   } catch (error) {
     const message = error instanceof Error ? error.message : getErrorMessage(locale, "unknown");

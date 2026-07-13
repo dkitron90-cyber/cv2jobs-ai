@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import type { AnalyzeResponse, ApplyResponse, CvProfile, Job, JobRecommendation, RecommendResponse } from "../app/lib/types";
 import type { ContentLanguage } from "../app/lib/text-language";
-import { prepareApplication, sendApplicationPackage } from "../app/lib/apply-client";
+import { prepareApplication, type ApplyChannel } from "../app/lib/apply-client";
 import { normalizeJobDescription } from "../app/lib/format-description";
 import { saveApplicationIfSignedIn, saveMatchIfSignedIn } from "../app/lib/save-match";
+import ApplicationSendPanel from "./ApplicationSendPanel";
 import { useLanguage } from "./LanguageProvider";
 
 type CvMatcherProps = {
@@ -35,6 +36,8 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
   const [applications, setApplications] = useState<Record<string, ApplicationState>>({});
   const [applyingJobId, setApplyingJobId] = useState("");
   const [preparingAll, setPreparingAll] = useState(false);
+  const [cvText, setCvText] = useState("");
+  const [sendPanel, setSendPanel] = useState<{ job: Job; application: ApplyResponse } | null>(null);
 
   useEffect(() => {
     if (!selectedJob) return;
@@ -50,8 +53,10 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setResult(null);
     setError("");
     setCvLanguage(null);
+    setCvText("");
     setApplications({});
     setApplyNotice("");
+    setSendPanel(null);
   }
 
   function selectJob(job: Job) {
@@ -97,9 +102,11 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       setProfile(data.profile);
       setRecommendations(data.recommendations);
       setCvLanguage(data.cvLanguage ?? null);
+      if (data.cvText) setCvText(data.cvText);
 
       if (data.recommendations.length > 0) {
         selectJob(data.recommendations[0].job);
+        void prewarmApplications(data.recommendations.slice(0, 3).map((item) => item.job));
       } else {
         setError(t("matcher.noMatches"));
       }
@@ -134,6 +141,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || t("matcher.analysisFailed"));
       setResult(data);
+      if (data.cvText) setCvText(data.cvText);
 
       void persistCv(data);
 
@@ -155,6 +163,54 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     }
   }
 
+  function getPreparedCoverLetter(job: Job) {
+    if (activeJob?.id === job.id && result?.match.coverLetter) {
+      return {
+        coverLetter: result.match.coverLetter,
+        recruiterMessage: result.match.recruiterMessage,
+        matchScore: result.match.matchScore,
+        candidateName: result.cv.candidateName,
+      };
+    }
+    return null;
+  }
+
+  async function buildApplication(job: Job) {
+    const cached = applications[job.id]?.data;
+    if (cached) return cached;
+
+    const prepared = getPreparedCoverLetter(job);
+    return prepareApplication({
+      file: file as File,
+      job,
+      locale,
+      cvText: cvText || undefined,
+      coverLetter: prepared?.coverLetter,
+      recruiterMessage: prepared?.recruiterMessage,
+      matchScore: prepared?.matchScore,
+      candidateName: prepared?.candidateName,
+    });
+  }
+
+  async function prewarmApplications(jobs: Job[]) {
+    if (!file) return;
+
+    await Promise.all(
+      jobs.map(async (job) => {
+        if (applications[job.id]?.data) return;
+        try {
+          const data = await buildApplication(job);
+          setApplications((current) => ({
+            ...current,
+            [job.id]: { data, status: current[job.id]?.status === "sent" ? "sent" : "ready" },
+          }));
+        } catch {
+          // background prep is best-effort
+        }
+      }),
+    );
+  }
+
   async function applyToJob(job: Job) {
     if (!file) return setError(t("matcher.uploadFirst"));
 
@@ -163,32 +219,12 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setError("");
 
     try {
-      let application = applications[job.id]?.data;
-      if (!application) {
-        application = await prepareApplication({ file, job, locale });
-        setApplications((current) => ({
-          ...current,
-          [job.id]: { data: application as ApplyResponse, status: "ready" },
-        }));
-      }
-
-      const channel = await sendApplicationPackage(file, application);
+      const application = await buildApplication(job);
       setApplications((current) => ({
         ...current,
-        [job.id]: { data: application as ApplyResponse, status: "sent" },
+        [job.id]: { data: application, status: current[job.id]?.status === "sent" ? "sent" : "ready" },
       }));
-
-      try {
-        await saveApplicationIfSignedIn({ job, application: application as ApplyResponse, locale });
-      } catch {
-        // saving is optional
-      }
-
-      setApplyNotice(
-        channel === "email"
-          ? t("matcher.applyEmailHint")
-          : t("matcher.applyPortalHint"),
-      );
+      setSendPanel({ job, application });
     } catch (applyError) {
       setError(
         applyError instanceof Error
@@ -198,6 +234,26 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     } finally {
       setApplyingJobId("");
     }
+  }
+
+  async function completeSend(job: Job, application: ApplyResponse, channel: ApplyChannel) {
+    setApplications((current) => ({
+      ...current,
+      [job.id]: { data: application, status: "sent" },
+    }));
+    setSendPanel(null);
+
+    try {
+      await saveApplicationIfSignedIn({ job, application, locale });
+    } catch {
+      // saving is optional
+    }
+
+    setApplyNotice(
+      channel === "email"
+        ? t("matcher.applyEmailHint")
+        : t("matcher.applyPortalHint"),
+    );
   }
 
   async function prepareAllApplications() {
@@ -213,7 +269,7 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
           if (applications[item.job.id]?.data) {
             return [item.job.id, applications[item.job.id].data] as const;
           }
-          const data = await prepareApplication({ file, job: item.job, locale });
+          const data = await buildApplication(item.job);
           return [item.job.id, data] as const;
         }),
       );
@@ -238,6 +294,15 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
 
   return (
     <div className="matcher-shell">
+      {sendPanel && file && (
+        <ApplicationSendPanel
+          job={sendPanel.job}
+          application={sendPanel.application}
+          file={file}
+          onClose={() => setSendPanel(null)}
+          onComplete={(channel) => void completeSend(sendPanel.job, sendPanel.application, channel)}
+        />
+      )}
       <section className="matcher-hero">
         <div>
           <p className="eyebrow">{t("matcher.eyebrow")}</p>

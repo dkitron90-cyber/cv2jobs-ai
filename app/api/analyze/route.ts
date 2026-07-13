@@ -4,6 +4,7 @@ import { extractCvText, parseJson } from "../../lib/extract-cv";
 import { getErrorMessage, parseLocale } from "../../lib/i18n";
 import { buildAnalyzePrompt } from "../../lib/prompts";
 import { detectContentLanguage } from "../../lib/text-language";
+import type { AnalyzeResponse } from "../../lib/types";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,8 @@ export async function POST(req: NextRequest) {
     });
 
     const content = response.output_text;
-    return NextResponse.json(parseJson(content));
+    const parsed = parseJson<AnalyzeResponse>(content);
+    return NextResponse.json({ ...parsed, cvText });
   } catch (error) {
     const message = error instanceof Error ? error.message : getErrorMessage(locale, "unknown");
     return NextResponse.json({ error: message }, { status: 500 });

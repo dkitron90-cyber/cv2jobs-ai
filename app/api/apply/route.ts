@@ -32,24 +32,43 @@ export async function POST(req: NextRequest) {
     const company = String(form.get("company") || "").trim();
     const jobUrl = String(form.get("jobUrl") || "").trim();
     const jobDescription = normalizeJobDescription(String(form.get("jobDescription") || ""));
+    const cvTextFromClient = String(form.get("cvText") || "").trim();
+    const existingCoverLetter = String(form.get("coverLetter") || "").trim();
+    const existingRecruiterMessage = String(form.get("recruiterMessage") || "").trim();
+    const existingCandidateName = String(form.get("candidateName") || "").trim();
+    const existingMatchScore = Number(form.get("matchScore"));
 
     if (!file) return NextResponse.json({ error: getErrorMessage(locale, "cvRequired") }, { status: 400 });
     if (!jobTitle || !jobDescription) {
       return NextResponse.json({ error: getErrorMessage(locale, "jobDescriptionRequired") }, { status: 400 });
     }
 
-    let cvText: string;
-    try {
-      cvText = await extractCvText(file);
-    } catch (error) {
-      if (error instanceof Error && error.message === "UNSUPPORTED_FILE_TYPE") {
-        return NextResponse.json({ error: getErrorMessage(locale, "unsupportedFile") }, { status: 400 });
+    let cvText = cvTextFromClient;
+    if (!cvText) {
+      try {
+        cvText = await extractCvText(file);
+      } catch (error) {
+        if (error instanceof Error && error.message === "UNSUPPORTED_FILE_TYPE") {
+          return NextResponse.json({ error: getErrorMessage(locale, "unsupportedFile") }, { status: 400 });
+        }
+        throw error;
       }
-      throw error;
     }
 
     if (!cvText.trim()) {
       return NextResponse.json({ error: getErrorMessage(locale, "extractFailed") }, { status: 400 });
+    }
+
+    if (existingCoverLetter && existingRecruiterMessage) {
+      const result: ApplyResponse = {
+        candidateName: existingCandidateName || "Candidate",
+        coverLetter: existingCoverLetter,
+        recruiterMessage: existingRecruiterMessage,
+        matchScore: Number.isFinite(existingMatchScore) ? existingMatchScore : 70,
+        applyUrl: jobUrl,
+        contactEmail: extractContactEmail(jobDescription),
+      };
+      return NextResponse.json(result);
     }
 
     const cvLanguage = detectContentLanguage(cvText);

@@ -1,8 +1,21 @@
 import type { ApplyResponse, Job } from "./types";
 
+export type ApplyChannel = "portal" | "email" | "none" | "popup_blocked";
+
 export type PreparedApplication = ApplyResponse & {
   job: Job;
   status: "ready" | "sent" | "error";
+};
+
+export type PrepareApplicationOptions = {
+  file: File;
+  job: Job;
+  locale: string;
+  cvText?: string;
+  coverLetter?: string;
+  recruiterMessage?: string;
+  matchScore?: number;
+  candidateName?: string;
 };
 
 export async function copyText(value: string) {
@@ -27,15 +40,19 @@ export function downloadCvFile(file: File) {
   URL.revokeObjectURL(url);
 }
 
-export function openApplyDestination(application: ApplyResponse) {
+export function openApplyDestination(application: ApplyResponse): ApplyChannel {
   if (application.applyUrl) {
-    window.open(application.applyUrl, "_blank", "noopener,noreferrer");
+    const opened = window.open(application.applyUrl, "_blank", "noopener,noreferrer");
+    if (!opened) return "popup_blocked";
     return "portal";
   }
 
   if (application.contactEmail) {
     const subject = encodeURIComponent(`Application — ${application.candidateName}`);
-    const body = encodeURIComponent(application.coverLetter);
+    const intro = application.coverLetter.slice(0, 600).trim();
+    const body = encodeURIComponent(
+      `${intro}${application.coverLetter.length > 600 ? "\n\n[Full cover letter copied to your clipboard — paste it here.]" : ""}`,
+    );
     window.location.href = `mailto:${application.contactEmail}?subject=${subject}&body=${body}`;
     return "email";
   }
@@ -43,11 +60,7 @@ export function openApplyDestination(application: ApplyResponse) {
   return "none";
 }
 
-export async function prepareApplication(params: {
-  file: File;
-  job: Job;
-  locale: string;
-}): Promise<ApplyResponse> {
+export async function prepareApplication(params: PrepareApplicationOptions): Promise<ApplyResponse> {
   const form = new FormData();
   form.append("cv", params.file);
   form.append("locale", params.locale);
@@ -56,15 +69,20 @@ export async function prepareApplication(params: {
   form.append("jobUrl", params.job.url);
   form.append("jobDescription", params.job.description);
 
+  if (params.cvText) form.append("cvText", params.cvText);
+  if (params.coverLetter) form.append("coverLetter", params.coverLetter);
+  if (params.recruiterMessage) form.append("recruiterMessage", params.recruiterMessage);
+  if (params.matchScore != null) form.append("matchScore", String(params.matchScore));
+  if (params.candidateName) form.append("candidateName", params.candidateName);
+
   const response = await fetch("/api/apply", { method: "POST", body: form });
   const data = (await response.json()) as ApplyResponse & { error?: string };
   if (!response.ok) throw new Error(data.error || "apply failed");
   return data;
 }
 
-export async function sendApplicationPackage(file: File, application: ApplyResponse) {
+export async function primeApplicationPackage(file: File, application: ApplyResponse) {
   downloadCvFile(file);
   await copyText(application.coverLetter);
-  const channel = openApplyDestination(application);
-  return channel;
+  return openApplyDestination(application);
 }

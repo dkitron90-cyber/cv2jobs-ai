@@ -44,6 +44,7 @@ export type JobMatch = {
 export type AnalyzeResponse = {
   cv: CvAnalysis;
   match: JobMatch;
+  cvText?: string;
 };
 
 export type JobRecommendation = {
@@ -56,6 +57,7 @@ export type RecommendResponse = {
   profile: CvProfile;
   recommendations: JobRecommendation[];
   cvLanguage?: "he" | "en" | "mixed";
+  cvText?: string;
 };
 
 export type ApplyResponse = {
@@ -71,7 +73,7 @@ export type WorkplaceType = "remote" | "hybrid" | "on-site" | "unspecified";
 
 export type Job = {
   id: string;
-  source: "greenhouse" | "lever" | "ashby" | "comeet" | "drushim";
+  source: "greenhouse" | "lever" | "ashby" | "comeet" | "drushim" | "linkedin";
   sourceLabel: string;
   company: string;
   title: string;
