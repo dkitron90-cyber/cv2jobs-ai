@@ -9,6 +9,7 @@ export type Messages = {
     main: string;
     jobRadar: string;
     cvMatcher: string;
+    mySpace: string;
     feedsLive: string;
   };
   lang: {
@@ -63,6 +64,10 @@ export type Messages = {
     langMixed: string;
     translatedNote: string;
     translating: string;
+    saveJob: string;
+    jobSaved: string;
+    jobSaveFailed: string;
+    signInToSave: string;
   };
   matcher: {
     eyebrow: string;
@@ -136,6 +141,47 @@ export type Messages = {
     checkEmail: string;
     sendFailed: string;
     signOutFailed: string;
+    mySpace: string;
+  };
+  space: {
+    eyebrow: string;
+    title: string;
+    hero: string;
+    signInTitle: string;
+    signInBody: string;
+    loading: string;
+    loadFailed: string;
+    tabOverview: string;
+    tabSaved: string;
+    tabMatches: string;
+    tabApplications: string;
+    tabCvs: string;
+    tabProfile: string;
+    statSaved: string;
+    statMatches: string;
+    statApplications: string;
+    statCvs: string;
+    recentActivity: string;
+    noActivity: string;
+    emptySaved: string;
+    emptyMatches: string;
+    emptyApplications: string;
+    emptyCvs: string;
+    matchAgain: string;
+    openJob: string;
+    remove: string;
+    savedOn: string;
+    statusMatched: string;
+    statusApplication: string;
+    profileName: string;
+    profileEmail: string;
+    profileSave: string;
+    profileSaved: string;
+    profileSaveFailed: string;
+    viewCoverLetter: string;
+    hideCoverLetter: string;
+    cvUploaded: string;
+    memberSince: string;
   };
   errors: {
     missingOpenAiKey: string;

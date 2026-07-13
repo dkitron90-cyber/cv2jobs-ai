@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { Job, JobsResponse, WorkplaceType } from "../app/lib/types";
 import { getLocaleDateFormatter } from "../app/lib/i18n";
 import { detectContentLanguage, normalizeSearchText } from "../app/lib/text-language";
+import { saveJob } from "../app/lib/user-data";
 import { useLanguage } from "./LanguageProvider";
 import JobDescriptionView from "./JobDescriptionView";
+import { useAuth } from "./useAuth";
 
 type JobsExplorerProps = {
   onMatchJob: (job: Job) => void;
@@ -13,6 +15,7 @@ type JobsExplorerProps = {
 
 export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
   const { locale, t } = useLanguage();
+  const { user } = useAuth();
   const [data, setData] = useState<JobsResponse | null>(null);
   const [query, setQuery] = useState("");
   const [company, setCompany] = useState("");
@@ -25,6 +28,8 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
   const [error, setError] = useState("");
   const [translations, setTranslations] = useState<Record<string, { title: string; description: string; translated: boolean }>>({});
   const [translating, setTranslating] = useState(false);
+  const [saveNotice, setSaveNotice] = useState("");
+  const [savingJobId, setSavingJobId] = useState("");
 
   const workplaceLabels: Record<WorkplaceType, string> = {
     remote: t("workplace.remote"),
@@ -178,6 +183,24 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
 
   function closeMobileDetail() {
     setMobileDetailOpen(false);
+  }
+
+  async function handleSaveJob(job: Job) {
+    if (!user) {
+      setSaveNotice(t("radar.signInToSave"));
+      return;
+    }
+
+    setSavingJobId(job.id);
+    setSaveNotice("");
+    try {
+      await saveJob(job);
+      setSaveNotice(t("radar.jobSaved"));
+    } catch {
+      setSaveNotice(t("radar.jobSaveFailed"));
+    } finally {
+      setSavingJobId("");
+    }
   }
 
   return (
@@ -376,10 +399,18 @@ export default function JobsExplorer({ onMatchJob }: JobsExplorerProps) {
                 <button className="match-button" onClick={() => onMatchJob(selectedJob)}>
                   {t("radar.matchCv")} <span>→</span>
                 </button>
+                <button
+                  className="save-job-button"
+                  onClick={() => void handleSaveJob(selectedJob)}
+                  disabled={savingJobId === selectedJob.id}
+                >
+                  {savingJobId === selectedJob.id ? "…" : t("radar.saveJob")}
+                </button>
                 <a href={selectedJob.url} target="_blank" rel="noreferrer" className="apply-link">
                   {t("radar.openOriginal")}
                 </a>
               </div>
+              {saveNotice && <p className="save-notice">{saveNotice}</p>}
               <div className="job-description">
                 <h3>{t("radar.roleBrief")}</h3>
                 <JobDescriptionView description={displayDescription} />

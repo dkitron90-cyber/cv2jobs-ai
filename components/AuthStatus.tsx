@@ -1,37 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient, isSupabaseConfigured } from "../app/lib/supabase/client";
+import { useState } from "react";
+import { createClient } from "../app/lib/supabase/client";
 import { useLanguage } from "./LanguageProvider";
+import { useAuth } from "./useAuth";
 
-export default function AuthStatus() {
+type AuthStatusProps = {
+  onOpenSpace?: () => void;
+};
+
+export default function AuthStatus({ onOpenSpace }: AuthStatusProps) {
   const { t } = useLanguage();
-  const [email, setEmail] = useState("");
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { user, email, configured, loading: authLoading } = useAuth();
+  const [emailInput, setEmailInput] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const configured = isSupabaseConfigured();
-
-  useEffect(() => {
-    if (!configured) return;
-
-    const supabase = createClient();
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserEmail(user?.email ?? null);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user.email ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [configured]);
 
   async function signIn() {
-    if (!email.trim()) {
+    if (!emailInput.trim()) {
       setMessage(t("auth.enterEmail"));
       return;
     }
@@ -42,7 +28,7 @@ export default function AuthStatus() {
       const supabase = createClient();
       const redirectTo = `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
+        email: emailInput.trim(),
         options: { emailRedirectTo: redirectTo },
       });
       if (error) throw error;
@@ -61,8 +47,7 @@ export default function AuthStatus() {
       const supabase = createClient();
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      setEmail("");
-      setUserEmail(null);
+      setEmailInput("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t("auth.signOutFailed"));
     } finally {
@@ -74,10 +59,13 @@ export default function AuthStatus() {
 
   return (
     <div className="auth-status">
-      {userEmail ? (
+      {user && email ? (
         <>
-          <span className="auth-user">{userEmail}</span>
-          <button type="button" onClick={() => void signOut()} disabled={loading}>
+          <button type="button" className="auth-space-link" onClick={onOpenSpace}>
+            {t("auth.mySpace")}
+          </button>
+          <span className="auth-user">{email}</span>
+          <button type="button" onClick={() => void signOut()} disabled={loading || authLoading}>
             {t("auth.signOut")}
           </button>
         </>
@@ -85,12 +73,12 @@ export default function AuthStatus() {
         <>
           <input
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            value={emailInput}
+            onChange={(event) => setEmailInput(event.target.value)}
             placeholder={t("auth.emailPlaceholder")}
             aria-label={t("auth.emailAria")}
           />
-          <button type="button" onClick={() => void signIn()} disabled={loading}>
+          <button type="button" onClick={() => void signIn()} disabled={loading || authLoading}>
             {loading ? t("auth.sending") : t("auth.signIn")}
           </button>
         </>

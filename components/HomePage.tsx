@@ -4,11 +4,12 @@ import { useState } from "react";
 import AuthStatus from "./AuthStatus";
 import JobsExplorer from "./JobsExplorer";
 import CvMatcher from "./CvMatcher";
+import PersonalSpace from "./PersonalSpace";
 import LanguageSwitcher from "./LanguageSwitcher";
 import type { Job } from "../app/lib/types";
 import { useLanguage } from "./LanguageProvider";
 
-type View = "jobs" | "match";
+type View = "jobs" | "match" | "space";
 
 export default function HomePage() {
   const { t } = useLanguage();
@@ -31,9 +32,10 @@ export default function HomePage() {
         <nav aria-label={t("nav.main")}>
           <button className={view === "jobs" ? "active" : ""} onClick={() => setView("jobs")}>{t("nav.jobRadar")}</button>
           <button className={view === "match" ? "active" : ""} onClick={() => setView("match")}>{t("nav.cvMatcher")}</button>
+          <button className={view === "space" ? "active" : ""} onClick={() => setView("space")}>{t("nav.mySpace")}</button>
         </nav>
         <LanguageSwitcher />
-        <AuthStatus />
+        <AuthStatus onOpenSpace={() => setView("space")} />
         <div className="header-status"><i /> {t("nav.feedsLive")}</div>
       </header>
 
@@ -42,6 +44,9 @@ export default function HomePage() {
       </div>
       <div className={view === "match" ? "view-panel" : "view-panel hidden"}>
         <CvMatcher selectedJob={selectedJob} onBrowseJobs={() => setView("jobs")} />
+      </div>
+      <div className={view === "space" ? "view-panel" : "view-panel hidden"}>
+        <PersonalSpace onMatchJob={matchJob} onBrowseJobs={() => setView("jobs")} />
       </div>
     </main>
   );

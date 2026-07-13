@@ -61,6 +61,18 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setError("");
   }
 
+  async function persistCv(analysis?: AnalyzeResponse | RecommendResponse["profile"]) {
+    if (!file) return;
+    try {
+      const form = new FormData();
+      form.append("cv", file);
+      if (analysis) form.append("analysis", JSON.stringify(analysis));
+      await fetch("/api/me/cv", { method: "POST", body: form });
+    } catch {
+      // optional persistence
+    }
+  }
+
   async function findBestMatches() {
     setError("");
     setResult(null);
@@ -91,6 +103,8 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       } else {
         setError(t("matcher.noMatches"));
       }
+
+      void persistCv(data.profile);
     } catch (matchError) {
       setError(matchError instanceof Error ? matchError.message : t("matcher.somethingWrong"));
     } finally {
@@ -120,6 +134,8 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || t("matcher.analysisFailed"));
       setResult(data);
+
+      void persistCv(data);
 
       try {
         const saved = await saveMatchIfSignedIn({
