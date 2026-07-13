@@ -1,5 +1,7 @@
 import type { Job, WorkplaceType } from "../types";
-import { normalizeJobDescription } from "../format-description";
+import { decodeEntities, normalizeJobDescription } from "../format-description";
+
+export { decodeEntities };
 
 export const ISRAEL_LOCATION_PATTERN = new RegExp(
   [
@@ -54,36 +56,8 @@ export function isIsraelLocation(...parts: Array<string | undefined | null>): bo
   return ISRAEL_LOCATION_PATTERN.test(locations);
 }
 
-export function decodeEntities(value: string): string {
-  const entities: Record<string, string> = {
-    "&amp;": "&",
-    "&lt;": "<",
-    "&gt;": ">",
-    "&quot;": '"',
-    "&#39;": "'",
-    "&nbsp;": " ",
-  };
-
-  return value
-    .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (entity) => entities[entity] ?? entity)
-    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)));
-}
-
 export function toPlainText(html = ""): string {
-  return normalizeJobDescription(
-    decodeEntities(
-      html
-        .replace(/<br\s*\/?\s*>/gi, "\n")
-        .replace(/<\/p>/gi, "\n\n")
-        .replace(/<\/li>/gi, "\n")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\r/g, "")
-        .replace(/[ \t]+/g, " ")
-        .replace(/\n[ \t]+/g, "\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim(),
-    ),
-  );
+  return normalizeJobDescription(html);
 }
 
 export function inferWorkplaceFromText(searchable: string): WorkplaceType {

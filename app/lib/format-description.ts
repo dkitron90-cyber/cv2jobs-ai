@@ -1,3 +1,42 @@
+export function decodeEntities(value: string): string {
+  const entities: Record<string, string> = {
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&#39;": "'",
+    "&nbsp;": " ",
+  };
+
+  return value
+    .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (entity) => entities[entity] ?? entity)
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)));
+}
+
+function looksLikeHtml(text: string): boolean {
+  return /<\/?[a-z][^>]*>/i.test(text) || /&lt;\/?[a-z]/i.test(text);
+}
+
+export function stripHtml(html: string): string {
+  let text = decodeEntities(html);
+
+  if (/&(?:lt|gt|amp|quot|#39|nbsp);/i.test(text)) {
+    text = decodeEntities(text);
+  }
+
+  return text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|section|article|header|footer|blockquote)>/gi, "\n\n")
+    .replace(/<\/(h[1-6]|li|tr)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<h[1-6][^>]*>/gi, "\n\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ");
+}
+
 function cleanupWhitespace(text: string): string {
   return text
     .replace(/\r/g, "")
@@ -75,6 +114,10 @@ export function normalizeJobDescription(raw = ""): string {
   if (!text) return "";
 
   text = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+
+  if (looksLikeHtml(text)) {
+    text = stripHtml(text);
+  }
 
   const whole = tryFlattenJson(text);
   if (whole) return whole;

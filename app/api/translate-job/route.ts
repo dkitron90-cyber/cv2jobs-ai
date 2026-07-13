@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { getErrorMessage, parseLocale } from "../../lib/i18n";
 import { parseJson } from "../../lib/extract-cv";
 import { detectContentLanguage } from "../../lib/text-language";
+import { normalizeJobDescription } from "../../lib/format-description";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const title = String(body.title ?? "").trim();
-    const description = String(body.description ?? "").trim();
+    const description = normalizeJobDescription(String(body.description ?? ""));
 
     if (!title && !description) {
       return NextResponse.json({ title: "", description: "", translated: false });
@@ -60,7 +61,7 @@ ${description.slice(0, 12000)}`,
     const translated = parseJson<TranslatePayload>(response.output_text);
     return NextResponse.json({
       title: translated.title || title,
-      description: translated.description || description,
+      description: normalizeJobDescription(translated.description || description),
       translated: true,
     });
   } catch (error) {
