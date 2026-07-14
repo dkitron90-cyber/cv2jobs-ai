@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AnalyzeResponse, ApplyResponse, CvProfile, Job, JobRecommendation, RecommendResponse } from "../app/lib/types";
 import type { ContentLanguage } from "../app/lib/text-language";
-import { prepareApplication, type ApplyChannel, type SendMode } from "../app/lib/apply-client";
+import { prepareApplication, type ApplyChannel, type SendMode, type SendOutcome } from "../app/lib/apply-client";
 import { normalizeJobDescription } from "../app/lib/format-description";
 import { saveApplicationIfSignedIn, saveMatchIfSignedIn } from "../app/lib/save-match";
 import ApplicationSendPanel from "./ApplicationSendPanel";
@@ -12,6 +12,7 @@ import { useLanguage } from "./LanguageProvider";
 type CvMatcherProps = {
   selectedJob: Job | null;
   onBrowseJobs: () => void;
+  onRequestSignIn?: () => void;
 };
 
 type ApplicationState = {
@@ -19,7 +20,7 @@ type ApplicationState = {
   status: "ready" | "sent";
 };
 
-export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps) {
+export default function CvMatcher({ selectedJob, onBrowseJobs, onRequestSignIn }: CvMatcherProps) {
   const { locale, t } = useLanguage();
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
@@ -236,7 +237,13 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     }
   }
 
-  async function completeSend(job: Job, application: ApplyResponse, channel: ApplyChannel, mode: SendMode) {
+  async function completeSend(
+    job: Job,
+    application: ApplyResponse,
+    channel: ApplyChannel,
+    mode: SendMode,
+    outcome: SendOutcome,
+  ) {
     setApplications((current) => ({
       ...current,
       [job.id]: { data: application, status: "sent" },
@@ -244,9 +251,14 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
     setSendPanel(null);
 
     try {
-      await saveApplicationIfSignedIn({ job, application, locale, mode });
+      await saveApplicationIfSignedIn({ job, application, locale, mode, outcome });
     } catch {
       // saving is optional
+    }
+
+    if (outcome === "verified") {
+      setApplyNotice(t("matcher.applyVerifiedHint"));
+      return;
     }
 
     setApplyNotice(
@@ -302,7 +314,10 @@ export default function CvMatcher({ selectedJob, onBrowseJobs }: CvMatcherProps)
           application={sendPanel.application}
           file={file}
           onClose={() => setSendPanel(null)}
-          onComplete={(channel, mode) => void completeSend(sendPanel.job, sendPanel.application, channel, mode)}
+          onComplete={(channel, mode, outcome) =>
+            void completeSend(sendPanel.job, sendPanel.application, channel, mode, outcome)
+          }
+          onRequestSignIn={onRequestSignIn}
         />
       )}
       <section className="matcher-hero">

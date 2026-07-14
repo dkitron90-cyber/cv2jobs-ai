@@ -1,8 +1,14 @@
 import type { AnalyzeResponse, ApplyResponse, Job } from "./types";
 import type { Locale } from "./i18n";
 import { getMessages, t } from "./i18n";
-import type { SendMode } from "./apply-client";
+import type { SendMode, SendOutcome } from "./apply-client";
 import { createClient, isSupabaseConfigured } from "./supabase/client";
+
+function applicationStatus(mode: SendMode | undefined, outcome: SendOutcome | undefined) {
+  if (outcome === "verified" && mode === "recruiter") return "outreach_verified";
+  if (mode === "recruiter") return "outreach_assisted";
+  return "application_assisted";
+}
 
 export async function saveMatchIfSignedIn(params: {
   activeJob: Job | null;
@@ -46,6 +52,7 @@ export async function saveApplicationIfSignedIn(params: {
   application: ApplyResponse;
   locale?: Locale;
   mode?: SendMode;
+  outcome?: SendOutcome;
 }) {
   if (!isSupabaseConfigured()) return null;
 
@@ -55,6 +62,8 @@ export async function saveApplicationIfSignedIn(params: {
   } = await supabase.auth.getUser();
 
   if (!user) return null;
+
+  const outcome = params.outcome ?? "assisted";
 
   const { data, error } = await supabase
     .from("job_matches")
@@ -71,8 +80,9 @@ export async function saveApplicationIfSignedIn(params: {
         outreachMessage: params.application.outreachMessage,
         candidateName: params.application.candidateName,
         sendMode: params.mode ?? "portal",
+        outcome,
       },
-      status: params.mode === "recruiter" ? "recruiter_outreach_sent" : "application_sent",
+      status: applicationStatus(params.mode, outcome),
     })
     .select("id")
     .single();

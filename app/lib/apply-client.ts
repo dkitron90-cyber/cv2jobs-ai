@@ -2,6 +2,7 @@ import type { ApplyResponse, Job } from "./types";
 
 export type ApplyChannel = "portal" | "email" | "none" | "popup_blocked";
 export type SendMode = "portal" | "recruiter";
+export type SendOutcome = "verified" | "assisted";
 
 export type PreparedApplication = ApplyResponse & {
   job: Job;

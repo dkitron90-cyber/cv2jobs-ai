@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import AuthStatus from "./AuthStatus";
+import AppFooter from "./AppFooter";
 import JobsExplorer from "./JobsExplorer";
 import CvMatcher from "./CvMatcher";
+import OnboardingStrip from "./OnboardingStrip";
 import PersonalSpace from "./PersonalSpace";
 import LanguageSwitcher from "./LanguageSwitcher";
 import type { Job } from "../app/lib/types";
@@ -23,6 +25,7 @@ export default function HomePage() {
   const { t } = useLanguage();
   const [view, setView] = useState<View>("jobs");
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [signInRequestId, setSignInRequestId] = useState(0);
 
   function matchJob(job: Job) {
     setSelectedJob(job);
@@ -33,6 +36,10 @@ export default function HomePage() {
   function openMatcher() {
     setView("match");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function requestSignIn() {
+    setSignInRequestId((current) => current + 1);
   }
 
   const navLabels: Record<View, string> = {
@@ -78,22 +85,32 @@ export default function HomePage() {
               {t("nav.feedsLive")}
             </div>
             <LanguageSwitcher />
-            <AuthStatus onOpenSpace={() => setView("space")} />
+            <AuthStatus onOpenSpace={() => setView("space")} signInRequestId={signInRequestId} />
           </div>
         </div>
       </header>
 
       <main className="app-main">
+        {(view === "jobs" || view === "match") && (
+          <OnboardingStrip onUploadCv={openMatcher} onBrowseJobs={() => setView("jobs")} />
+        )}
         <div className={view === "jobs" ? "view-panel" : "view-panel hidden"}>
           <JobsExplorer onMatchJob={matchJob} onOpenMatcher={openMatcher} />
         </div>
         <div className={view === "match" ? "view-panel" : "view-panel hidden"}>
-          <CvMatcher selectedJob={selectedJob} onBrowseJobs={() => setView("jobs")} />
+          <CvMatcher selectedJob={selectedJob} onBrowseJobs={() => setView("jobs")} onRequestSignIn={requestSignIn} />
         </div>
         <div className={view === "space" ? "view-panel" : "view-panel hidden"}>
-          <PersonalSpace onMatchJob={matchJob} onBrowseJobs={() => setView("jobs")} />
+          <PersonalSpace
+            onMatchJob={matchJob}
+            onBrowseJobs={() => setView("jobs")}
+            onOpenMatcher={openMatcher}
+            onRequestSignIn={requestSignIn}
+          />
         </div>
       </main>
+
+      <AppFooter />
 
       <nav className="app-bottom-nav" aria-label={t("nav.main")}>
         {NAV_ITEMS.map((item) => renderNavButton(item, true))}

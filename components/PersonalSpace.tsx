@@ -25,9 +25,16 @@ type SpaceTab = "overview" | "saved" | "matches" | "applications" | "cvs" | "pro
 type PersonalSpaceProps = {
   onMatchJob: (job: Job) => void;
   onBrowseJobs: () => void;
+  onOpenMatcher: () => void;
+  onRequestSignIn: () => void;
 };
 
-export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpaceProps) {
+export default function PersonalSpace({
+  onMatchJob,
+  onBrowseJobs,
+  onOpenMatcher,
+  onRequestSignIn,
+}: PersonalSpaceProps) {
   const { locale, t } = useLanguage();
   const { user, loading: authLoading, configured } = useAuth();
   const [tab, setTab] = useState<SpaceTab>("overview");
@@ -51,20 +58,24 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
     setLoading(true);
     setError("");
     try {
-      const [profileData, saved, matched, applied, recruiterOutreach, cvRows] = await Promise.all([
-        fetchProfile(),
-        fetchSavedJobs(),
-        fetchJobMatches("matched"),
-        fetchJobMatches("application_sent"),
-        fetchJobMatches("recruiter_outreach_sent"),
-        fetchCvs(),
-      ]);
+      const [profileData, saved, matched, appliedLegacy, outreachLegacy, verified, outreachAssisted, applyAssisted, cvRows] =
+        await Promise.all([
+          fetchProfile(),
+          fetchSavedJobs(),
+          fetchJobMatches("matched"),
+          fetchJobMatches("application_sent"),
+          fetchJobMatches("recruiter_outreach_sent"),
+          fetchJobMatches("outreach_verified"),
+          fetchJobMatches("outreach_assisted"),
+          fetchJobMatches("application_assisted"),
+          fetchCvs(),
+        ]);
       setProfile(profileData);
       setFullName(profileData?.full_name ?? "");
       setSavedJobs(saved);
       setMatches(matched);
       setApplications(
-        [...recruiterOutreach, ...applied].sort(
+        [...verified, ...outreachAssisted, ...applyAssisted, ...outreachLegacy, ...appliedLegacy].sort(
           (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
         ),
       );
@@ -129,7 +140,14 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
           <p className="eyebrow">{t("space.eyebrow")}</p>
           <h1>{t("space.signInTitle")}</h1>
           <p>{t("space.signInBody")}</p>
-          <button className="space-primary" onClick={onBrowseJobs}>{t("matcher.browseRadar")}</button>
+          <div className="space-card-actions">
+            <button type="button" className="space-primary" onClick={onRequestSignIn}>
+              {t("auth.signIn")}
+            </button>
+            <button type="button" className="space-secondary" onClick={onBrowseJobs}>
+              {t("matcher.browseRadar")}
+            </button>
+          </div>
         </section>
       </div>
     );
@@ -196,7 +214,17 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
           <div className="space-section">
             <h2>{t("space.recentActivity")}</h2>
             {recentItems.length === 0 ? (
-              <p className="space-empty-copy">{t("space.noActivity")}</p>
+              <div className="space-empty-block">
+                <p className="space-empty-copy">{t("space.noActivity")}</p>
+                <div className="space-empty-actions">
+                  <button type="button" className="space-primary" onClick={onBrowseJobs}>
+                    {t("space.ctaBrowse")}
+                  </button>
+                  <button type="button" className="space-secondary" onClick={onOpenMatcher}>
+                    {t("space.ctaUpload")}
+                  </button>
+                </div>
+              </div>
             ) : (
               <ul className="space-activity-list">
                 {recentItems.map((entry) => (
@@ -224,7 +252,7 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
       {!loading && tab === "saved" && (
         <section className="space-panel">
           {savedJobs.length === 0 ? (
-            <p className="space-empty-copy">{t("space.emptySaved")}</p>
+            <EmptyState copy={t("space.emptySaved")} cta={t("space.ctaBrowse")} onAction={onBrowseJobs} />
           ) : (
             <div className="space-card-grid">
               {savedJobs.map((row) => (
@@ -246,7 +274,7 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
       {!loading && tab === "matches" && (
         <section className="space-panel">
           {matches.length === 0 ? (
-            <p className="space-empty-copy">{t("space.emptyMatches")}</p>
+            <EmptyState copy={t("space.emptyMatches")} cta={t("space.ctaUpload")} onAction={onOpenMatcher} />
           ) : (
             <div className="space-card-grid">
               {matches.map((row) => (
@@ -260,7 +288,7 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
       {!loading && tab === "applications" && (
         <section className="space-panel">
           {applications.length === 0 ? (
-            <p className="space-empty-copy">{t("space.emptyApplications")}</p>
+            <EmptyState copy={t("space.emptyApplications")} cta={t("space.ctaUpload")} onAction={onOpenMatcher} />
           ) : (
             <div className="space-card-grid">
               {applications.map((row) => (
@@ -280,7 +308,7 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
       {!loading && tab === "cvs" && (
         <section className="space-panel">
           {cvs.length === 0 ? (
-            <p className="space-empty-copy">{t("space.emptyCvs")}</p>
+            <EmptyState copy={t("space.emptyCvs")} cta={t("space.ctaUpload")} onAction={onOpenMatcher} />
           ) : (
             <div className="space-card-grid">
               {cvs.map((row) => (
@@ -314,6 +342,25 @@ export default function PersonalSpace({ onMatchJob, onBrowseJobs }: PersonalSpac
           {profileNotice && <p className="space-notice">{profileNotice}</p>}
         </section>
       )}
+    </div>
+  );
+}
+
+function EmptyState({
+  copy,
+  cta,
+  onAction,
+}: {
+  copy: string;
+  cta: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="space-empty-block">
+      <p className="space-empty-copy">{copy}</p>
+      <button type="button" className="space-primary" onClick={onAction}>
+        {cta}
+      </button>
     </div>
   );
 }
@@ -389,7 +436,12 @@ function ApplicationCard({
   const [showLetter, setShowLetter] = useState(false);
   const coverLetter =
     typeof row.match_result?.coverLetter === "string" ? row.match_result.coverLetter : "";
-  const isRecruiterOutreach = row.status === "recruiter_outreach_sent";
+  const badge =
+    row.status === "outreach_verified"
+      ? t("space.verifiedBadge")
+      : row.status === "outreach_assisted" || row.status === "recruiter_outreach_sent"
+        ? t("space.assistedOutreachBadge")
+        : t("space.assistedApplyBadge");
 
   return (
     <article className="space-card">
@@ -398,7 +450,9 @@ function ApplicationCard({
         {row.match_score != null && <span className="space-score">{row.match_score}</span>}
       </div>
       <p>{row.company}</p>
-      {isRecruiterOutreach && <span className="space-outreach-badge">{t("space.outreachBadge")}</span>}
+      <span className={`space-outreach-badge ${row.status === "outreach_verified" ? "verified" : ""}`}>
+        {badge}
+      </span>
       <small>{dateFormatter.format(new Date(row.created_at))}</small>
       <div className="space-card-actions">
         {row.job_url && (

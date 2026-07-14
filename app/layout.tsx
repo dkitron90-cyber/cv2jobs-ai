@@ -1,16 +1,22 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Manrope, Source_Sans_3 } from "next/font/google";
 
-const inter = Inter({
+const display = Manrope({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-display",
+});
+
+const body = Source_Sans_3({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-body",
 });
 
 export const metadata: Metadata = {
   title: "CV2Jobs AI — Israel Job Radar",
-  description: "Live Israeli tech jobs with AI-powered CV matching.",
+  description: "Live Israeli tech jobs with AI-powered CV matching and recruiter outreach.",
 };
 
 export const viewport: Viewport = {
@@ -29,8 +35,8 @@ export default async function RootLayout({
   await params;
 
   return (
-    <html lang="en" className={inter.variable}>
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={`${display.variable} ${body.variable}`}>
+      <body className={body.className}>{children}</body>
     </html>
   );
 }
